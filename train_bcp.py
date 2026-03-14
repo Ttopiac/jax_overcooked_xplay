@@ -1,10 +1,15 @@
-"""Best Cross-Play (BCP) training in JAX.
+"""Behavioral Cloning Play (BCP) training in JAX.
 
-Loads a pre-trained SP population, selects the best agent,
-and trains a new best-response agent against it across all 5 layouts.
+Matches Carroll et al. (2019):
+  1. Load pre-trained BC model (from train_bc.py)
+  2. Train PPO agent with bc_schedule:
+     - Start with self-play (bc_factor=0)
+     - Linearly anneal to bc_factor=1.0 over bc_anneal_horizon steps
+     - After annealing: always paired with BC partner
 
-NOTE: This is "Best Cross-Play" (best SP agent as partner), NOT
-"Behavioral Cloning Play" from Carroll et al. which requires human data.
+At each PPO update, flip a coin with probability bc_factor:
+  - If < bc_factor: partner uses frozen BC params
+  - If >= bc_factor: partner uses ego's own params (self-play)
 """
 
 import argparse
@@ -31,7 +36,7 @@ def make_bcp_train(config, network, encoder, reward_shaper):
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
 
-    def train(rng, frozen_params):
+    def train(rng, bc_params):
         rng, init_rng = jax.random.split(rng)
         train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
 
@@ -46,8 +51,28 @@ def make_bcp_train(config, network, encoder, reward_shaper):
         all_env_states = tuple(all_env_states)
         all_obs = tuple(all_obs)
 
+        bc_horizon = config["bc_anneal_horizon"]
+
+        def _get_bc_factor(update_idx):
+            """Linear anneal: 0 -> 1 over bc_anneal_horizon updates."""
+            if bc_horizon <= 0:
+                return 1.0  # Always BC
+            frac = jnp.minimum(update_idx / bc_horizon, 1.0)
+            return frac
+
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng = runner_state
+
+            # Determine partner: BC or self-play
+            rng, coin_rng = jax.random.split(rng)
+            bc_factor = _get_bc_factor(update_idx)
+            use_bc = jax.random.uniform(coin_rng) < bc_factor
+
+            # Partner params: BC if use_bc, else ego's own params
+            partner_params = jax.tree.map(
+                lambda bc, ego: jnp.where(use_bc, bc, ego),
+                bc_params, train_state.params,
+            )
 
             all_traj = []
             new_states = []
@@ -63,7 +88,7 @@ def make_bcp_train(config, network, encoder, reward_shaper):
                     obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
 
                     pi_0, val_0 = network.apply(train_state.params, obs_0)
-                    pi_1, _ = network.apply(frozen_params, obs_1)
+                    pi_1, _ = network.apply(partner_params, obs_1)
 
                     a0 = pi_0.sample(seed=a0r)
                     a1 = pi_1.sample(seed=a1r)
@@ -119,6 +144,7 @@ def make_bcp_train(config, network, encoder, reward_shaper):
             metrics = {
                 "mean_reward": jnp.mean(traj_batch.reward),
                 "total_loss": loss_info["total_loss"],
+                "bc_factor": bc_factor,
             }
             return (train_state, all_env_states, all_obs, rng), metrics
 
@@ -136,7 +162,7 @@ def get_config(args):
     n_env_total = n_env_l * len(LAYOUT_NAMES)
     num_steps = args.num_steps
     num_updates = args.total_timesteps // (num_steps * n_env_total)
-    batch_size = num_steps * n_env_total  # ego only
+    batch_size = num_steps * n_env_total
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
@@ -156,11 +182,12 @@ def get_config(args):
         "reward_mode": args.reward_mode,
         "reward_shaping_factor": args.reward_shaping_factor,
         "reward_shaping_horizon": args.reward_shaping_horizon,
+        "bc_anneal_horizon": args.bc_anneal_horizon,
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="BCP training")
+    parser = argparse.ArgumentParser(description="BCP training (Carroll-style)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
@@ -179,37 +206,42 @@ def main():
     parser.add_argument("--reward-mode", type=str, default="shaped")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
+    parser.add_argument("--bc-anneal-horizon", type=int, default=0,
+                        help="PPO updates over which bc_factor anneals 0->1. 0=always BC.")
+    parser.add_argument("--bc-model", type=str, default="combined",
+                        help="Which BC model to use: layout name or 'combined'")
     args = parser.parse_args()
 
     config = get_config(args)
 
-    pop_path = f"checkpoints/sp_pop_seed{args.seed}.pkl"
-    print(f"[BCP] Loading SP population from {pop_path}")
-    with open(pop_path, "rb") as f:
-        pop_data = pickle.load(f)
+    # Load BC model
+    bc_path = f"checkpoints/bc_seed{args.seed}.pkl"
+    print(f"[BCP] Loading BC model from {bc_path}")
+    with open(bc_path, "rb") as f:
+        bc_data = pickle.load(f)
 
-    all_final_params = pop_data["final_params"]
-    all_ckpt_rewards = pop_data["ckpt_rewards"]
+    bc_params = jax.device_put(bc_data["bc_params"][args.bc_model])
+    print(f"[BCP] Using BC model: {args.bc_model}")
 
-    agent_scores = all_ckpt_rewards.mean(axis=1)
-    best_idx = int(jnp.argmax(agent_scores))
-    frozen_params = jax.tree.map(lambda x: x[best_idx], all_final_params)
-    print(f"[BCP] Best SP agent idx={best_idx} score={float(agent_scores[best_idx]):.4f}")
-
+    # Setup
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
+    reward_shaper = RewardShaper(
+        mode=config["reward_mode"],
+        reward_shaping_factor=config["reward_shaping_factor"],
+        reward_shaping_horizon=config["reward_shaping_horizon"],
+    )
     action_dim = make("overcooked", layout=overcooked_layouts[LAYOUT_NAMES[0]]).action_space("agent_0").n
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
-    print(f"[BCP] Training best-response ({config['num_updates']} updates, "
-          f"{args.total_timesteps/1e6:.0f}M)")
+    horizon_str = f"anneal over {args.bc_anneal_horizon} updates" if args.bc_anneal_horizon > 0 else "always BC"
+    print(f"[BCP] Training PPO_BC ({config['num_updates']} updates, "
+          f"{args.total_timesteps/1e6:.0f}M, {horizon_str})")
+
     bcp_train_fn = make_bcp_train(config, network, encoder, reward_shaper)
 
     rng = jax.random.PRNGKey(args.seed + 1000)
-    frozen_params = jax.device_put(frozen_params)
-
     t0 = time.time()
-    result = bcp_train_fn(rng, frozen_params)
+    result = bcp_train_fn(rng, bc_params)
     jax.block_until_ready(result)
     elapsed = time.time() - t0
 
@@ -217,11 +249,11 @@ def main():
     print(f"[BCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min). "
           f"Final mean reward: {rewards[-1]:.4f}")
 
+    # Save
     os.makedirs("checkpoints", exist_ok=True)
     ckpt = {
         "params": jax.device_get(result["train_state"].params),
-        "frozen_params": jax.device_get(frozen_params),
-        "best_sp_idx": best_idx,
+        "bc_model": args.bc_model,
         "config": config,
         "metrics": jax.device_get(result["metrics"]),
     }
