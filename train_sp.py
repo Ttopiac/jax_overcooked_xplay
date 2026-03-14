@@ -19,7 +19,7 @@ from ppo import Transition, compute_gae, ppo_update, create_train_state
 
 def flatten_obs(obs, num_envs):
     """Flatten (num_envs, H, W, C) uint8 obs to (num_envs, H*W*C) float32."""
-    return obs.reshape(num_envs, -1).astype(jnp.float32) / 255.0
+    return obs.reshape(num_envs, -1).astype(jnp.float32) 
 
 
 def make_train(config):
