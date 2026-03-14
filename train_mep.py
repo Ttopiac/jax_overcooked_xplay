@@ -208,11 +208,18 @@ def make_mep_pop_train(config):
 
 
 def make_mep_ego_train(config, network, encoder, reward_shaper):
-    """Phase 2: Train ego agent against MEP population (uniform random partner)."""
+    """Phase 2: Train ego agent against MEP population with prioritized sampling.
+
+    Prioritized sampling (matching MEP paper):
+      - Track per-partner mean reward
+      - Lower reward → higher sampling probability
+      - priority = (1/reward_rank) ^ alpha, then normalize
+    """
     envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
+    priority_alpha = config.get("priority_alpha", 3.0)
 
     def train(rng, pop_params):
         """pop_params: tree of (pop_size, ...)"""
@@ -232,12 +239,25 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
         all_env_states = tuple(all_env_states)
         all_obs = tuple(all_obs)
 
-        def _update_step(runner_state, update_idx):
-            train_state, all_env_states, all_obs, rng = runner_state
+        # Track per-partner performance for prioritized sampling
+        partner_rewards = jnp.zeros(pop_size)  # running mean reward per partner
 
-            # Uniform random partner from population
+        def _update_step(runner_state, update_idx):
+            train_state, all_env_states, all_obs, rng, partner_rewards = runner_state
+
+            # Prioritized sampling: lower reward → higher probability
+            # Use inverse rank with alpha exponent (matching MEP paper)
             rng, partner_rng = jax.random.split(rng)
-            partner_idx = jax.random.randint(partner_rng, (), 0, pop_size)
+
+            # Compute priorities: invert rewards (lower = higher priority)
+            epsilon = 1e-6
+            inv_rewards = 1.0 / (partner_rewards + epsilon)
+            # Rank-based: sort and use ranks
+            ranks = jnp.argsort(jnp.argsort(-inv_rewards)) + 1  # rank 1 = highest priority
+            priorities = (1.0 / ranks) ** priority_alpha
+            probs = priorities / priorities.sum()
+
+            partner_idx = jax.random.choice(partner_rng, pop_size, p=probs)
             partner_params = jax.tree.map(lambda x: x[partner_idx], pop_params)
 
             all_traj = []
@@ -306,10 +326,18 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
-            metrics = {"mean_reward": jnp.mean(traj_batch.reward), "total_loss": loss_info["total_loss"]}
-            return (train_state, all_env_states, all_obs, rng), metrics
+            mean_reward = jnp.mean(traj_batch.reward)
 
-        runner_state = (train_state, all_env_states, all_obs, rng)
+            # Update running mean reward for this partner (exponential moving avg)
+            ema_alpha = 0.1
+            partner_rewards = partner_rewards.at[partner_idx].set(
+                (1 - ema_alpha) * partner_rewards[partner_idx] + ema_alpha * mean_reward
+            )
+
+            metrics = {"mean_reward": mean_reward, "total_loss": loss_info["total_loss"]}
+            return (train_state, all_env_states, all_obs, rng, partner_rewards), metrics
+
+        runner_state = (train_state, all_env_states, all_obs, rng, partner_rewards)
         runner_state, metrics = jax.lax.scan(
             _update_step, runner_state, jnp.arange(config["ego_num_updates"])
         )
@@ -349,6 +377,7 @@ def get_config(args):
         "reward_shaping_horizon": args.reward_shaping_horizon,
         "pop_size": args.pop_size,
         "mep_alpha": args.mep_alpha,
+        "priority_alpha": args.priority_alpha,
     }
 
 
@@ -371,8 +400,11 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=512)
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--num-layers", type=int, default=2)
-    parser.add_argument("--pop-size", type=int, default=16)
+    parser.add_argument("--pop-size", type=int, default=5,
+                        help="MEP population size (paper default: 4-5)")
     parser.add_argument("--mep-alpha", type=float, default=0.01)
+    parser.add_argument("--priority-alpha", type=float, default=3.0,
+                        help="Prioritized sampling exponent for ego phase (MEP paper: 3.0)")
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
     parser.add_argument("--reward-mode", type=str, default="shaped")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
