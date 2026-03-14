@@ -204,7 +204,6 @@ def get_config(args):
         "num_epochs": args.num_epochs,
         "minibatch_size": minibatch_size,
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
-        "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
         "reward_shaping_factor": args.reward_shaping_factor,
         "reward_shaping_horizon": args.reward_shaping_horizon,
@@ -263,7 +262,7 @@ def main():
     print(f"[BCP] {total_bc} BC agents/seed, BC arch={bc_hidden_dims}, "
           f"layouts={BCP_JAXMARL_LAYOUTS}")
 
-    encoder = ObsEncoder(mode=config["obs_encoding"])
+    encoder = ObsEncoder()
     reward_shaper = RewardShaper(
         mode=config["reward_mode"],
         reward_shaping_factor=config["reward_shaping_factor"],

@@ -1,18 +1,20 @@
 """Observation encoding utilities for Overcooked.
 
-Provides two encoding modes:
-  - "full":       Raw grid obs, flattened and padded to max layout size.
+Encoding modes:
   - "egocentric": 7x7 window centered on agent, rotated so agent faces SOUTH.
-                  Fixed (26, 7, 7) = 1274-dim across ALL layouts.
+                  Fixed (26, 7, 7) = 1274-dim across ALL layouts and any N agents.
+                  All N-1 teammates are overlaid in shared channels.
+
+Future:
+  - "raw": Rendered grid image (needs CNN, agent-agnostic, scales to any N).
 
 Usage:
-    encoder = ObsEncoder(mode="egocentric")        # or "full"
+    encoder = ObsEncoder(mode="egocentric")
     flat_obs = encoder.encode(obs, state, agent_idx, num_envs)
 """
 
 import jax
 import jax.numpy as jnp
-from functools import partial
 
 
 # Direction index mapping (from JaxMARL):
@@ -99,46 +101,17 @@ def egocentric_encode(obs, state, agent_idx, num_envs):
     return ego_obs.reshape(num_envs, -1)  # (num_envs, EGO_FLAT_DIM)
 
 
-def full_grid_encode(obs, state, agent_idx, num_envs, max_obs_dim):
-    """Encode observations as full grid, flattened and padded.
-
-    Args:
-        obs: dict with agent keys.
-        state: unused for full grid encoding.
-        agent_idx: 0 or 1.
-        num_envs: number of parallel environments.
-        max_obs_dim: target flat dimension (pad to this size).
-
-    Returns:
-        (num_envs, max_obs_dim) float32 flattened observations.
-    """
-    agent_key = f"agent_{agent_idx}"
-    raw_obs = obs[agent_key]  # (num_envs, H, W, C)
-    flat = raw_obs.reshape(num_envs, -1).astype(jnp.float32)
-    pad_width = max_obs_dim - flat.shape[1]
-    if pad_width > 0:
-        flat = jnp.pad(flat, ((0, 0), (0, pad_width)))
-    return flat
-
-
 class ObsEncoder:
     """Configurable observation encoder.
 
     Args:
-        mode: "egocentric" or "full".
-        max_obs_dim: only used for "full" mode (pad target).
+        mode: "egocentric" (only supported mode currently).
     """
 
-    def __init__(self, mode="egocentric", max_obs_dim=None):
-        assert mode in ("egocentric", "full"), f"Unknown encoding mode: {mode}"
+    def __init__(self, mode="egocentric"):
+        assert mode in ("egocentric",), f"Unknown encoding mode: {mode}"
         self.mode = mode
-        self.max_obs_dim = max_obs_dim
-
-        if mode == "egocentric":
-            self.obs_flat_dim = EGO_FLAT_DIM
-        else:
-            assert max_obs_dim is not None, "max_obs_dim required for full mode"
-            self.obs_flat_dim = max_obs_dim
+        self.obs_flat_dim = EGO_FLAT_DIM
 
     def encode(self, obs, state, agent_idx, num_envs):
         """Encode observations.
@@ -146,13 +119,10 @@ class ObsEncoder:
         Args:
             obs: dict with agent keys.
             state: JaxMARL env state.
-            agent_idx: 0 or 1.
+            agent_idx: int, which agent to encode for.
             num_envs: number of parallel environments.
 
         Returns:
             (num_envs, self.obs_flat_dim) float32.
         """
-        if self.mode == "egocentric":
-            return egocentric_encode(obs, state, agent_idx, num_envs)
-        else:
-            return full_grid_encode(obs, state, agent_idx, num_envs, self.max_obs_dim)
+        return egocentric_encode(obs, state, agent_idx, num_envs)
