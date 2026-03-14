@@ -14,8 +14,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax.training.train_state import TrainState
-from jaxmarl import make
-from jaxmarl.environments.overcooked import overcooked_layouts
+from overcooked_env import Overcooked, overcooked_layouts
 
 from networks import ActorCritic
 from obs_encoding import ObsEncoder
@@ -27,7 +26,7 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 
 def make_parallel_sp_train(config):
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
     action_dim = envs[0].action_space(agents[0]).n
     n_layouts = len(LAYOUT_NAMES)

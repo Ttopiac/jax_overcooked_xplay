@@ -6,8 +6,7 @@ import time
 import subprocess
 import jax
 import jax.numpy as jnp
-from jaxmarl import make
-from jaxmarl.environments.overcooked import overcooked_layouts
+from overcooked_env import Overcooked, overcooked_layouts
 from networks import ActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
@@ -21,7 +20,7 @@ HIDDEN_DIMS = (64, 64, 64)  # 3×64
 
 
 def make_benchmark(pop_size):
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
     action_dim = envs[0].action_space(agents[0]).n
     n_env_l = NUM_ENVS_PER_LAYOUT

@@ -17,8 +17,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax.training.train_state import TrainState
-from jaxmarl import make
-from jaxmarl.environments.overcooked import overcooked_layouts
+from overcooked_env import Overcooked, overcooked_layouts
 
 from networks import ActorCritic
 from obs_encoding import ObsEncoder
@@ -31,7 +30,7 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 def make_mep_pop_train(config):
     """Phase 1: Train MEP population with entropy bonus."""
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
     action_dim = envs[0].action_space(agents[0]).n
     n_layouts = len(LAYOUT_NAMES)
@@ -219,7 +218,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
       - Lower reward → higher sampling probability
       - priority = (1/reward_rank) ^ alpha, then normalize
     """
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)

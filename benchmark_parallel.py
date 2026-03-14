@@ -7,8 +7,7 @@ Each agent trains across all 5 Overcooked layouts with padded observations.
 import time
 import jax
 import jax.numpy as jnp
-from jaxmarl import make
-from jaxmarl.environments.overcooked import overcooked_layouts
+from overcooked_env import Overcooked, overcooked_layouts
 
 from networks import ActorCritic
 from ppo import Transition, compute_gae, ppo_update, create_train_state
@@ -22,7 +21,7 @@ NUM_ENVS_PER_LAYOUT = 8  # 8 envs per layout × 5 layouts = 40 envs per agent
 def make_benchmark(pop_size):
     """Build a JIT-compiled parallel training function for pop_size agents."""
     # Create all 5 envs
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
     agents = envs[0].agents
 
     # Determine max obs dim

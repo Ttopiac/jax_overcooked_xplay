@@ -17,8 +17,7 @@ import time
 
 import jax
 import jax.numpy as jnp
-from jaxmarl import make
-from jaxmarl.environments.overcooked import overcooked_layouts
+from overcooked_env import Overcooked, overcooked_layouts
 
 from networks import ActorCritic
 from obs_encoding import ObsEncoder
@@ -38,7 +37,7 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
     ego_network: 256×256 MLP for the ego agent
     bc_network: 64×64 MLP for BC agents (different architecture!)
     """
-    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in BCP_JAXMARL_LAYOUTS]
+    envs = [Overcooked(layout=overcooked_layouts[name]) for name in BCP_JAXMARL_LAYOUTS]
     agents = envs[0].agents
     n_layouts = len(BCP_JAXMARL_LAYOUTS)
     n_env_l = config["num_envs_per_layout"]
