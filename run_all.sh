@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full training + evaluation pipeline for 2-player Overcooked experiments.
-# Runs training steps sequentially, evaluates after each step.
+# Runs training steps sequentially, evaluates after each step, prints tables.
 set -e
 cd "$(dirname "$0")"
 export PATH="/home/nathan/anaconda3/lib/python3.12/site-packages/nvidia/cuda_nvcc/bin:$PATH"
@@ -26,6 +26,7 @@ for SEED in 3 4; do
         --layouts cramped_room,asymm_advantages,coord_ring \
         --output eval_results/bc_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 1: SP Population ---
 echo ""
@@ -38,6 +39,7 @@ for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/sp_pop_seed${SEED}.pkl \
         --agent-type pop --output eval_results/sp_pop_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 2: SP Ego ---
 echo ""
@@ -50,6 +52,7 @@ for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/sp_n2_seed${SEED}.pkl \
         --output eval_results/sp_ego_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 3: MEP-16 ---
 echo ""
@@ -63,12 +66,12 @@ for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/mep16_pop_seed${SEED}.pkl \
         --agent-type pop --output eval_results/mep16_pop_selfplay_seed${SEED}.json
 done
-
 echo "--- Eval: MEP-16 ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/mep16_seed${SEED}.pkl \
         --output eval_results/mep16_ego_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 4: MEP-8 ---
 echo ""
@@ -82,12 +85,12 @@ for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/mep8_pop_seed${SEED}.pkl \
         --agent-type pop --output eval_results/mep8_pop_selfplay_seed${SEED}.json
 done
-
 echo "--- Eval: MEP-8 ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/mep8_seed${SEED}.pkl \
         --output eval_results/mep8_ego_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 5: BCP ---
 echo ""
@@ -102,6 +105,7 @@ for SEED in 0 1 2; do
         --layouts cramped_room,asymm_advantages,coord_ring \
         --output eval_results/bcp_ego_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Step 6: FCP ---
 echo ""
@@ -114,70 +118,58 @@ for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/fcp_n2x1_hetero_seed${SEED}.pkl \
         --output eval_results/fcp_ego_selfplay_seed${SEED}.json
 done
+python print_tables.py
 
 # --- Final: Cross-play evaluation ---
 echo ""
 echo "=== Final: Cross-play evaluation ==="
 
-# Each ego agent (seeds 0,1,2) vs each unseen partner type (seeds 3,4)
 for EGO_METHOD in sp mep16 mep8 bcp fcp; do
+    echo "  Evaluating $EGO_METHOD vs all partners..."
     for EGO_SEED in 0 1 2; do
-        # Determine ego path
         case $EGO_METHOD in
-            sp)   EGO_PATH="checkpoints/sp_n2_seed${EGO_SEED}.pkl" ;;
+            sp)    EGO_PATH="checkpoints/sp_n2_seed${EGO_SEED}.pkl" ;;
             mep16) EGO_PATH="checkpoints/mep16_seed${EGO_SEED}.pkl" ;;
             mep8)  EGO_PATH="checkpoints/mep8_seed${EGO_SEED}.pkl" ;;
             bcp)   EGO_PATH="checkpoints/bcp_n2x1_hetero_seed${EGO_SEED}.pkl" ;;
             fcp)   EGO_PATH="checkpoints/fcp_n2x1_hetero_seed${EGO_SEED}.pkl" ;;
         esac
 
-        # vs SP partners
         for P_SEED in 3 4; do
             LAYOUTS="cramped_room,asymm_advantages,coord_ring,forced_coord,counter_circuit"
             [ "$EGO_METHOD" = "bcp" ] && LAYOUTS="cramped_room,asymm_advantages,coord_ring"
-            python evaluate.py --mode cross-play \
-                --ego-path $EGO_PATH \
+
+            python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/sp_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
                 --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_sp_s${P_SEED}.json
-        done
 
-        # vs MEP-16 partners
-        for P_SEED in 3 4; do
-            LAYOUTS="cramped_room,asymm_advantages,coord_ring,forced_coord,counter_circuit"
-            [ "$EGO_METHOD" = "bcp" ] && LAYOUTS="cramped_room,asymm_advantages,coord_ring"
-            python evaluate.py --mode cross-play \
-                --ego-path $EGO_PATH \
+            python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/mep16_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
                 --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep16_s${P_SEED}.json
-        done
 
-        # vs MEP-8 partners
-        for P_SEED in 3 4; do
-            LAYOUTS="cramped_room,asymm_advantages,coord_ring,forced_coord,counter_circuit"
-            [ "$EGO_METHOD" = "bcp" ] && LAYOUTS="cramped_room,asymm_advantages,coord_ring"
-            python evaluate.py --mode cross-play \
-                --ego-path $EGO_PATH \
+            python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/mep8_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
                 --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep8_s${P_SEED}.json
-        done
 
-        # vs BC partners (3 layouts only)
-        for P_SEED in 3 4; do
-            python evaluate.py --mode cross-play \
-                --ego-path $EGO_PATH \
+            python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/bc_seed${P_SEED}.pkl --partner-type bc \
                 --bc-hidden-dim 64 --bc-num-layers 2 \
                 --layouts cramped_room,asymm_advantages,coord_ring \
                 --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_bc_s${P_SEED}.json
         done
     done
+    python print_tables.py
 done
 
 echo ""
 echo "=========================================="
+echo " FINAL RESULTS"
+echo "=========================================="
+python print_tables.py
+
+echo ""
 echo " All training and evaluation complete."
 echo " Results in eval_results/"
-echo "=========================================="
