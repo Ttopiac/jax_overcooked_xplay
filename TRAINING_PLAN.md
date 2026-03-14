@@ -250,10 +250,33 @@ For BC unseen partners:
 
 ### Metrics to Report
 
-Per layout, per skill level:
-- **Mean episodic reward** (sparse only — number of deliveries × 20)
-- **Standard error** across 3 ego seeds × N unseen partners
-- Optional: shaped reward breakdown, coordination metrics
+**Per ego method, per layout, report these 8 metrics:**
+
+| Metric | Partners | Count |
+|--------|----------|-------|
+| vs SP-LOW | Bottom 1/3 of 32 SP agents | ~10 |
+| vs SP-MED | Middle 1/3 of 32 SP agents | ~11 |
+| vs SP-HIGH | Top 1/3 of 32 SP agents | ~11 |
+| vs MEP-LOW | Bottom 1/3 of 32 MEP agents | ~10 |
+| vs MEP-MED | Middle 1/3 of 32 MEP agents | ~11 |
+| vs MEP-HIGH | Top 1/3 of 32 MEP agents | ~11 |
+| vs BC | 6 BC agents per layout (3 layouts only) | 6 |
+| **Overall** | Mean across all unseen partners | all |
+
+Each cell = **mean episodic reward ± standard error** across:
+- 3 ego seeds × N unseen partners × 100 episodes per pair per layout
+
+Reward is **sparse only** (number of deliveries × 20) for clean comparison.
+
+**Example result table (per layout):**
+
+| Ego \ Partner | SP-L | SP-M | SP-H | MEP-L | MEP-M | MEP-H | BC | Overall |
+|---|---|---|---|---|---|---|---|---|
+| SP | | | | | | | | |
+| MEP-16 | | | | | | | | |
+| MEP-8 | | | | | | | | |
+| BCP | | | | | | | | |
+| FCP | | | | | | | | |
 
 ---
 
