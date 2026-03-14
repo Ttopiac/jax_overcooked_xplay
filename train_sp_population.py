@@ -21,6 +21,7 @@ from networks import ActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
+from wandb_utils import WandbLogger, setup_wandb_args
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -233,6 +234,7 @@ def main():
                         choices=["shaped", "sparse"])
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
+    setup_wandb_args(parser)
     args = parser.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
@@ -284,6 +286,21 @@ def main():
         with open(ckpt_path, "wb") as f:
             pickle.dump(ckpt, f)
         print(f"  Saved seed {seed} to {ckpt_path}")
+
+        # W&B: log mean reward across agents for this seed
+        tags = args.wandb_tags.split(",") if args.wandb_tags else ["sp_pop"]
+        logger = WandbLogger(
+            project=args.wandb_project, name=f"sp_pop_seed{seed}",
+            config={**config, "seed": seed, "method": "SP_POP"},
+            enabled=args.wandb, group=args.wandb_group, tags=tags,
+        )
+        seed_rewards = jax.device_get(mean_rewards[start:end])  # (pop_size, num_updates)
+        logger.log_training_curves(
+            {"mean_reward": seed_rewards.mean(axis=0)}, prefix="train"
+        )
+        logger.log_summary({"final_mean_reward": float(seed_rewards[:, -1].mean()),
+                            "train_time_s": elapsed})
+        logger.finish()
 
 
 if __name__ == "__main__":

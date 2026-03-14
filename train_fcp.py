@@ -19,6 +19,7 @@ from networks import ActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
+from wandb_utils import WandbLogger, setup_wandb_args
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -223,6 +224,7 @@ def main():
     parser.add_argument("--reward-mode", type=str, default="shaped")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
+    setup_wandb_args(parser)
     args = parser.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
@@ -274,16 +276,27 @@ def main():
     elapsed = time.time() - t0
 
     os.makedirs("checkpoints", exist_ok=True)
+    tags = args.wandb_tags.split(",") if args.wandb_tags else ["fcp"]
     for i, seed in enumerate(seeds):
         r = float(results["metrics"]["mean_reward"][i, -1])
         print(f"  seed {seed}: final reward = {r:.4f}")
+        metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"]))
         ckpt = {
             "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
             "config": config,
-            "metrics": jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"])),
+            "metrics": metrics_i,
         }
         with open(f"checkpoints/fcp_seed{seed}.pkl", "wb") as f:
             pickle.dump(ckpt, f)
+
+        logger = WandbLogger(
+            project=args.wandb_project, name=f"fcp_seed{seed}",
+            config={**config, "seed": seed, "method": "FCP"},
+            enabled=args.wandb, group=args.wandb_group, tags=tags,
+        )
+        logger.log_training_curves(metrics_i, prefix="train")
+        logger.log_summary({"final_reward": r, "train_time_s": elapsed})
+        logger.finish()
 
     print(f"[FCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 

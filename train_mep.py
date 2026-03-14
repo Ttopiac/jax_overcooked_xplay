@@ -24,6 +24,7 @@ from networks import ActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
+from wandb_utils import WandbLogger, setup_wandb_args
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -411,6 +412,7 @@ def main():
     parser.add_argument("--reward-mode", type=str, default="shaped")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
+    setup_wandb_args(parser)
     args = parser.parse_args()
 
     pop_seeds = [int(s) for s in args.seeds.split(",")]
@@ -437,8 +439,9 @@ def main():
         print(f"  seed {seed}: final pop reward = {r:.4f}")
     print(f"[MEP] Phase 1 done in {pop_time:.1f}s ({pop_time/60:.1f} min)")
 
-    # Save pop params per seed
+    # Save pop params per seed + W&B
     os.makedirs("checkpoints", exist_ok=True)
+    tags = args.wandb_tags.split(",") if args.wandb_tags else [f"mep{args.pop_size}"]
     for i, seed in enumerate(pop_seeds):
         pop_ckpt = {
             "all_params": jax.device_get(jax.tree.map(lambda x: x[i], pop_results["all_params"])),
@@ -446,6 +449,17 @@ def main():
         }
         with open(f"checkpoints/mep{args.pop_size}_pop_seed{seed}.pkl", "wb") as f:
             pickle.dump(pop_ckpt, f)
+
+        logger = WandbLogger(
+            project=args.wandb_project, name=f"mep{args.pop_size}_pop_seed{seed}",
+            config={**config, "seed": seed, "method": f"MEP{args.pop_size}_POP"},
+            enabled=args.wandb, group=args.wandb_group, tags=tags,
+        )
+        pop_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], pop_results["metrics"]))
+        logger.log_training_curves(pop_metrics_i, prefix="pop")
+        logger.log_summary({"final_pop_reward": float(pop_metrics_i["mean_reward"][-1]),
+                            "pop_time_s": pop_time})
+        logger.finish()
 
     # Phase 2: Ego agent training (vmap over ego_seeds)
     if config["ego_num_updates"] > 0 and ego_seeds:
@@ -480,17 +494,28 @@ def main():
             print(f"  seed {seed}: final ego reward = {r:.4f}")
         print(f"[MEP] Phase 2 done in {ego_time:.1f}s ({ego_time/60:.1f} min)")
 
-        # Save ego per seed
+        # Save ego per seed + W&B
         for i, seed in enumerate(ego_seeds):
+            ego_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], ego_results["metrics"]))
             ckpt = {
                 "ego_params": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["train_state"].params)),
                 "pop_params": jax.device_get(jax.tree.map(lambda x: x[pop_seeds.index(seed)], pop_results["all_params"])),
                 "config": config,
-                "ego_metrics": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["metrics"])),
+                "ego_metrics": ego_metrics_i,
             }
             with open(f"checkpoints/mep{args.pop_size}_seed{seed}.pkl", "wb") as f:
                 pickle.dump(ckpt, f)
             print(f"  Saved seed {seed} to checkpoints/mep{args.pop_size}_seed{seed}.pkl")
+
+            logger = WandbLogger(
+                project=args.wandb_project, name=f"mep{args.pop_size}_ego_seed{seed}",
+                config={**config, "seed": seed, "method": f"MEP{args.pop_size}_EGO"},
+                enabled=args.wandb, group=args.wandb_group, tags=tags,
+            )
+            logger.log_training_curves(ego_metrics_i, prefix="ego")
+            logger.log_summary({"final_ego_reward": float(ego_metrics_i["mean_reward"][-1]),
+                                "ego_time_s": ego_time})
+            logger.finish()
 
 
 if __name__ == "__main__":
