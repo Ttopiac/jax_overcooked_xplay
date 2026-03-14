@@ -39,7 +39,7 @@ def make_mep_pop_train(config):
     pop_size = config["pop_size"]
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     tx = optax.chain(optax.clip_by_global_norm(0.5), optax.adam(config["lr"], eps=1e-5))
@@ -345,6 +345,8 @@ def get_config(args):
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
+        "reward_shaping_factor": args.reward_shaping_factor,
+        "reward_shaping_horizon": args.reward_shaping_horizon,
         "pop_size": args.pop_size,
         "mep_alpha": args.mep_alpha,
     }
@@ -373,6 +375,8 @@ def main():
     parser.add_argument("--mep-alpha", type=float, default=0.01)
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
     parser.add_argument("--reward-mode", type=str, default="shaped")
+    parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
+    parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
     config = get_config(args)
@@ -399,7 +403,7 @@ def main():
     print(f"[MEP] Phase 2: Training ego agent ({config['ego_num_updates']} updates, "
           f"{args.ego_timesteps/1e6:.0f}M)")
 
-    reward_shaper = RewardShaper(mode=config["reward_mode"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
     ego_train_fn = make_mep_ego_train(config, network, encoder, reward_shaper)
 
     pop_params = jax.device_get(pop_result["all_params"])

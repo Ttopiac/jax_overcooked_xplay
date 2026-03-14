@@ -197,6 +197,8 @@ def get_config(args):
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
+        "reward_shaping_factor": args.reward_shaping_factor,
+        "reward_shaping_horizon": args.reward_shaping_horizon,
     }
 
 
@@ -218,6 +220,8 @@ def main():
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
     parser.add_argument("--reward-mode", type=str, default="shaped")
+    parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
+    parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
     config = get_config(args)
@@ -237,7 +241,7 @@ def main():
     print(f"[FCP] Tiers: HIGH={n_h} MED={n_m} LOW={n_l}")
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
     action_dim = make("overcooked", layout=overcooked_layouts[LAYOUT_NAMES[0]]).action_space("agent_0").n
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
