@@ -21,9 +21,14 @@ import jax.numpy as jnp
 import optax
 from flax.training.train_state import TrainState
 from jaxmarl import make
+from jaxmarl.environments.overcooked import overcooked_layouts
 
 from networks import ActorCritic
 from ppo import Transition, compute_gae, ppo_update, create_train_state
+
+
+def flatten_obs(obs, num_envs):
+    return obs.reshape(num_envs, -1).astype(jnp.float32) / 255.0
 
 
 def train_sp_with_checkpoints(config, network, env, agents, rng, num_checkpoints=15):
@@ -43,76 +48,77 @@ def train_sp_with_checkpoints(config, network, env, agents, rng, num_checkpoints
     sp_updates = config["sp_num_updates"]
     ckpt_interval = max(1, sp_updates // num_checkpoints)
 
-    @jax.jit
-    def _train_chunk(runner_state, chunk_len):
-        """Train for chunk_len update steps."""
+    def _make_train_chunk(chunk_len):
+        """Create a JIT-compiled training function for a fixed chunk length."""
+        @jax.jit
+        def _train_chunk(runner_state):
+            def _update_step(runner_state, unused):
+                train_state, env_state, obs, rng = runner_state
 
-        def _update_step(runner_state, unused):
-            train_state, env_state, obs, rng = runner_state
+                def _env_step(carry, unused):
+                    env_state, obs, rng = carry
+                    rng, a_rng0, a_rng1, s_rng = jax.random.split(rng, 4)
 
-            def _env_step(carry, unused):
+                    obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                    obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
+
+                    pi_0, val_0 = network.apply(train_state.params, obs_0)
+                    pi_1, val_1 = network.apply(train_state.params, obs_1)
+
+                    a0 = pi_0.sample(seed=a_rng0)
+                    a1 = pi_1.sample(seed=a_rng1)
+                    lp0 = pi_0.log_prob(a0)
+                    lp1 = pi_1.log_prob(a1)
+
+                    actions_dict = {agents[0]: a0, agents[1]: a1}
+                    step_rngs = jax.random.split(s_rng, config["num_envs"])
+                    next_obs, next_state, rewards, dones, infos = jax.vmap(env.step)(
+                        step_rngs, env_state, actions_dict
+                    )
+
+                    done_all = dones["__all__"]
+                    reward = rewards[agents[0]]
+
+                    t0 = Transition(obs_0, a0, reward, done_all, lp0, val_0)
+                    t1 = Transition(obs_1, a1, reward, done_all, lp1, val_1)
+                    return (next_state, next_obs, rng), (t0, t1)
+
+                carry, (traj_0, traj_1) = jax.lax.scan(
+                    _env_step, (env_state, obs, rng), None, length=config["num_steps"]
+                )
                 env_state, obs, rng = carry
-                rng, a_rng0, a_rng1, s_rng = jax.random.split(rng, 4)
 
-                obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-                obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
-
-                pi_0, val_0 = network.apply(train_state.params, obs_0)
-                pi_1, val_1 = network.apply(train_state.params, obs_1)
-
-                a0 = pi_0.sample(seed=a_rng0)
-                a1 = pi_1.sample(seed=a_rng1)
-                lp0 = pi_0.log_prob(a0)
-                lp1 = pi_1.log_prob(a1)
-
-                actions_dict = {agents[0]: a0, agents[1]: a1}
-                step_rngs = jax.random.split(s_rng, config["num_envs"])
-                next_obs, next_state, rewards, dones, infos = jax.vmap(env.step)(
-                    step_rngs, env_state, actions_dict
+                traj_batch = jax.tree.map(
+                    lambda x, y: jnp.concatenate([x, y], axis=1), traj_0, traj_1
                 )
 
-                done_all = dones["__all__"]
-                reward = rewards[agents[0]]
+                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
+                _, lv0 = network.apply(train_state.params, obs_0)
+                _, lv1 = network.apply(train_state.params, obs_1)
+                last_val = jnp.concatenate([lv0, lv1])
 
-                t0 = Transition(obs_0, a0, reward, done_all, lp0, val_0)
-                t1 = Transition(obs_1, a1, reward, done_all, lp1, val_1)
-                return (next_state, next_obs, rng), (t0, t1)
+                advantages, returns = compute_gae(
+                    traj_batch, last_val, config["gamma"], config["gae_lambda"]
+                )
 
-            carry, (traj_0, traj_1) = jax.lax.scan(
-                _env_step, (env_state, obs, rng), None, length=config["num_steps"]
+                flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
+                flat_adv = advantages.reshape(-1)
+                flat_ret = returns.reshape(-1)
+
+                rng, update_rng = jax.random.split(rng)
+                train_state_new, loss_info = ppo_update(
+                    train_state, flat_batch, flat_adv, flat_ret, config, update_rng
+                )
+
+                metrics = {"mean_reward": jnp.mean(traj_batch.reward)}
+                return (train_state_new, env_state, obs, rng), metrics
+
+            runner_state, metrics = jax.lax.scan(
+                _update_step, runner_state, None, length=chunk_len
             )
-            env_state, obs, rng = carry
-
-            traj_batch = jax.tree.map(
-                lambda x, y: jnp.concatenate([x, y], axis=1), traj_0, traj_1
-            )
-
-            obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-            obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
-            _, lv0 = network.apply(train_state.params, obs_0)
-            _, lv1 = network.apply(train_state.params, obs_1)
-            last_val = jnp.concatenate([lv0, lv1])
-
-            advantages, returns = compute_gae(
-                traj_batch, last_val, config["gamma"], config["gae_lambda"]
-            )
-
-            flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
-            flat_adv = advantages.reshape(-1)
-            flat_ret = returns.reshape(-1)
-
-            rng, update_rng = jax.random.split(rng)
-            train_state_new, loss_info = ppo_update(
-                train_state, flat_batch, flat_adv, flat_ret, config, update_rng
-            )
-
-            metrics = {"mean_reward": jnp.mean(traj_batch.reward)}
-            return (train_state_new, env_state, obs, rng), metrics
-
-        runner_state, metrics = jax.lax.scan(
-            _update_step, runner_state, None, length=chunk_len
-        )
-        return runner_state, metrics
+            return runner_state, metrics
+        return _train_chunk
 
     # Train in chunks, saving checkpoints
     runner_state = (train_state, env_state, obs, rng)
@@ -124,11 +130,11 @@ def train_sp_with_checkpoints(config, network, env, agents, rng, num_checkpoints
         if chunk_len <= 0:
             break
 
-        runner_state, metrics = _train_chunk(runner_state, chunk_len)
+        train_chunk_fn = _make_train_chunk(chunk_len)
+        runner_state, metrics = train_chunk_fn(runner_state)
         jax.block_until_ready(runner_state[0].params)
         updates_done += chunk_len
 
-        # Evaluate: use mean reward from this chunk
         eval_score = float(metrics["mean_reward"].mean())
         ck_params = jax.device_get(runner_state[0].params)
         checkpoints.append((ck_params, eval_score))
@@ -245,8 +251,8 @@ def make_fcp_train(config, network, env, agents):
                 env_state, obs, rng = carry
                 rng, a_rng0, a_rng1, s_rng = jax.random.split(rng, 4)
 
-                obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-                obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
 
                 # Ego uses trainable params, partner uses selected checkpoint
                 pi_0, val_0 = network.apply(train_state.params, obs_0)
@@ -272,7 +278,7 @@ def make_fcp_train(config, network, env, agents):
             )
             env_state, obs, rng = carry
 
-            obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
+            obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
             _, last_val = network.apply(train_state.params, obs_0)
 
             advantages, returns = compute_gae(
@@ -316,7 +322,7 @@ def get_config(args):
     fcp_batch = num_steps * num_envs
 
     return {
-        "layout": {"layout_name": args.layout},
+        "layout_name": args.layout,
         "num_envs": num_envs,
         "num_steps": num_steps,
         "lr": args.lr,
@@ -364,7 +370,8 @@ def main():
     rng = jax.random.PRNGKey(args.seed)
 
     # Setup env and network
-    env = make("overcooked", layout=config["layout"])
+    layout = overcooked_layouts[config["layout_name"]]
+    env = make("overcooked", layout=layout)
     agent_names = env.agents
 
     sample_obs, _ = env.reset(jax.random.PRNGKey(0))

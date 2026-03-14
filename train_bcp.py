@@ -16,14 +16,20 @@ import jax.numpy as jnp
 import optax
 from flax.training.train_state import TrainState
 from jaxmarl import make
+from jaxmarl.environments.overcooked import overcooked_layouts
 
 from networks import ActorCritic
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 
 
+def flatten_obs(obs, num_envs):
+    return obs.reshape(num_envs, -1).astype(jnp.float32) / 255.0
+
+
 def make_sp_population_train(config):
     """Train a population of SP agents and return their params + evaluation scores."""
-    env = make("overcooked", layout=config["layout"])
+    layout = overcooked_layouts[config["layout_name"]]
+    env = make("overcooked", layout=layout)
     agents = env.agents
 
     sample_key = jax.random.PRNGKey(0)
@@ -49,8 +55,8 @@ def make_sp_population_train(config):
                 env_state, obs, rng = carry
                 rng, a_rng0, a_rng1, s_rng = jax.random.split(rng, 4)
 
-                obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-                obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
 
                 pi_0, val_0 = network.apply(train_state.params, obs_0)
                 pi_1, val_1 = network.apply(train_state.params, obs_1)
@@ -82,8 +88,8 @@ def make_sp_population_train(config):
                 lambda x, y: jnp.concatenate([x, y], axis=1), traj_0, traj_1
             )
 
-            obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-            obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+            obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+            obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
             _, lv0 = network.apply(train_state.params, obs_0)
             _, lv1 = network.apply(train_state.params, obs_1)
             last_val = jnp.concatenate([lv0, lv1])
@@ -135,8 +141,8 @@ def make_bcp_train(config, network, obs_flat_dim, env, agents):
                 env_state, obs, rng = carry
                 rng, a_rng0, a_rng1, s_rng = jax.random.split(rng, 4)
 
-                obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-                obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
 
                 # Ego uses trainable params, partner uses frozen params
                 pi_0, val_0 = network.apply(train_state.params, obs_0)
@@ -162,7 +168,7 @@ def make_bcp_train(config, network, obs_flat_dim, env, agents):
             )
             env_state, obs, rng = carry
 
-            obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
+            obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
             _, last_val = network.apply(train_state.params, obs_0)
 
             advantages, returns = compute_gae(
@@ -208,7 +214,7 @@ def get_config(args):
     bcp_mb = min(args.minibatch_size, bcp_batch)
 
     return {
-        "layout": {"layout_name": args.layout},
+        "layout_name": args.layout,
         "num_envs": num_envs,
         "num_steps": num_steps,
         "lr": args.lr,

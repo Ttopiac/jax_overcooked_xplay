@@ -11,13 +11,20 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 from jaxmarl import make
+from jaxmarl.environments.overcooked import overcooked_layouts
 
 from networks import ActorCritic
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 
 
+def flatten_obs(obs, num_envs):
+    """Flatten (num_envs, H, W, C) uint8 obs to (num_envs, H*W*C) float32."""
+    return obs.reshape(num_envs, -1).astype(jnp.float32) / 255.0
+
+
 def make_train(config):
-    env = make("overcooked", layout=config["layout"])
+    layout = overcooked_layouts[config["layout_name"]]
+    env = make("overcooked", layout=layout)
     agents = env.agents  # ["agent_0", "agent_1"]
 
     # Determine observation and action shapes
@@ -47,8 +54,8 @@ def make_train(config):
                 rng, act_rng0, act_rng1, step_rng = jax.random.split(rng, 4)
 
                 # Both agents share same params
-                obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-                obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
 
                 pi_0, val_0 = network.apply(train_state.params, obs_0)
                 pi_1, val_1 = network.apply(train_state.params, obs_1)
@@ -83,8 +90,8 @@ def make_train(config):
             )
 
             # Bootstrap value
-            obs_0 = obs[agents[0]].reshape(config["num_envs"], -1)
-            obs_1 = obs[agents[1]].reshape(config["num_envs"], -1)
+            obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
+            obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
             _, last_val_0 = network.apply(train_state.params, obs_0)
             _, last_val_1 = network.apply(train_state.params, obs_1)
             last_val = jnp.concatenate([last_val_0, last_val_1])
@@ -131,7 +138,7 @@ def get_config(args):
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
-        "layout": {"layout_name": args.layout},
+        "layout_name": args.layout,
         "num_envs": num_envs,
         "num_steps": num_steps,
         "num_updates": num_updates,
