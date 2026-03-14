@@ -373,7 +373,7 @@ def main():
     parser.add_argument("--pop-size", type=int, default=16)
     parser.add_argument("--mep-alpha", type=float, default=0.01)
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
-    parser.add_argument("--reward-mode", type=str, default="shaped")
+    parser.add_argument("--reward-mode", type=str, default="originaler")
     parser.add_argument("--reward-magnifier", type=float, default=3.0)
     args = parser.parse_args()
 

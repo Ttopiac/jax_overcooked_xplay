@@ -227,8 +227,8 @@ def main():
     parser.add_argument("--num-checkpoints", type=int, default=15)
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full"])
-    parser.add_argument("--reward-mode", type=str, default="shaped",
-                        choices=["shaped", "sparse"])
+    parser.add_argument("--reward-mode", type=str, default="originaler",
+                        choices=["originaler", "sparse", "solo"])
     parser.add_argument("--reward-magnifier", type=float, default=3.0)
     args = parser.parse_args()
 

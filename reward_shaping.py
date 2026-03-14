@@ -1,13 +1,16 @@
 """Reward shaping utilities for Overcooked.
 
-Provides configurable reward computation matching Carroll et al. (2019):
-  - "sparse":  Sparse delivery reward only (20 per soup).
-  - "shaped":  Dynamic blend of sparse + shaped rewards.
-               reward = magnifier * (ratio * sparse + (1 - ratio) * shaped)
-               ratio ramps from 0 → final_ratio over warmup_steps.
+Matches the multiHRI Learner reward computation:
+  - "sparse":     Sparse delivery reward only (group sum).
+  - "originaler": group_sparse * ratio + individual_shaped * (1 - ratio).
+                  NO magnifier. Default learner type in original code.
+  - "solo":       magnifier * (group_sparse * ratio + individual_shaped * (1 - ratio)).
+                  Same as originaler but with magnifier (like SoloWorker).
+
+Ratio ramps from 0 → final_ratio over warmup_steps (default 0 → 0.5 over 10M).
 
 Usage:
-    shaper = RewardShaper(mode="shaped")       # or "sparse"
+    shaper = RewardShaper(mode="originaler")
     reward = shaper.compute(rewards, infos, agent_key, step_count)
 """
 
@@ -15,24 +18,24 @@ import jax.numpy as jnp
 
 
 class RewardShaper:
-    """Configurable reward computation.
+    """Configurable reward computation matching multiHRI Learner classes.
 
     Args:
-        mode: "sparse" or "shaped".
-        magnifier: Reward scaling factor (default 3.0, matching original).
+        mode: "sparse", "originaler", or "solo".
+        magnifier: Reward scaling (only used by "solo" mode, default 3.0).
         final_ratio: Target sparse ratio at end of warmup (default 0.5).
-        warmup_steps: Env steps over which ratio ramps from 0 to final_ratio
-                      (default 10_000_000, matching original).
+        warmup_steps: Env steps over which ratio ramps 0 → final_ratio
+                      (default 10_000_000).
     """
 
     def __init__(
         self,
-        mode="shaped",
+        mode="originaler",
         magnifier=3.0,
         final_ratio=0.5,
         warmup_steps=10_000_000,
     ):
-        assert mode in ("sparse", "shaped"), f"Unknown reward mode: {mode}"
+        assert mode in ("sparse", "originaler", "solo"), f"Unknown reward mode: {mode}"
         self.mode = mode
         self.magnifier = magnifier
         self.final_ratio = final_ratio
@@ -41,21 +44,31 @@ class RewardShaper:
     def compute(self, rewards, infos, agent_key, step_count=0):
         """Compute reward for one agent across a batch of environments.
 
+        Matches multiHRI's Originaler learner:
+          personal_reward = group_sparse * ratio + individual_shaped * (1 - ratio)
+
         Args:
-            rewards: dict from env.step, e.g. {"agent_0": (num_envs,), ...}.
+            rewards: dict from env.step, {"agent_0": (N,), "agent_1": (N,)}.
             infos: dict from env.step, with infos["shaped_reward"][agent_key].
             agent_key: "agent_0" or "agent_1".
-            step_count: current cumulative environment step (for dynamic ratio).
+            step_count: cumulative environment step (for dynamic ratio).
 
         Returns:
-            (num_envs,) float32 reward.
+            (N,) float32 reward.
         """
-        sparse_r = rewards[agent_key]
+        # Group sparse = sum of both agents' sparse rewards
+        group_sparse_r = rewards["agent_0"] + rewards["agent_1"]
 
         if self.mode == "sparse":
-            return sparse_r
+            return group_sparse_r
 
-        shaped_r = infos["shaped_reward"][agent_key]
+        # Individual shaped reward for this agent
+        individual_shaped_r = infos["shaped_reward"][agent_key]
+
         ratio = jnp.minimum(step_count / self.warmup_steps, self.final_ratio)
-        combined = ratio * sparse_r + (1.0 - ratio) * shaped_r
-        return self.magnifier * combined
+        personal_reward = group_sparse_r * ratio + individual_shaped_r * (1.0 - ratio)
+
+        if self.mode == "originaler":
+            return personal_reward
+        else:  # "solo"
+            return self.magnifier * personal_reward

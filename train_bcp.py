@@ -175,7 +175,7 @@ def main():
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
-    parser.add_argument("--reward-mode", type=str, default="shaped")
+    parser.add_argument("--reward-mode", type=str, default="originaler")
     parser.add_argument("--reward-magnifier", type=float, default=3.0)
     args = parser.parse_args()
 
