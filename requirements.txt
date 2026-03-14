@@ -1,0 +1,6 @@
+jax[cuda12]>=0.4.20
+jaxlib>=0.4.20
+jaxmarl>=0.0.3
+flax>=0.8.0
+optax>=0.1.7
+distrax>=0.1.5
