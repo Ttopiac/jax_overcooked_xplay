@@ -210,7 +210,8 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel SP population training")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seeds", type=str, default="0",
+                        help="Comma-separated seeds, e.g. '0,1,2,3,4'")
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
@@ -234,40 +235,55 @@ def main():
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
+    seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
+    pop_size = args.pop_size
+    total_agents = len(seeds) * pop_size
+
     print(
-        f"[SP-POP] seed={args.seed} pop_size={args.pop_size} "
+        f"[SP-POP] seeds={seeds} pop_size={pop_size} total_agents={total_agents} "
         f"updates={config['num_updates']} timesteps={args.total_timesteps/1e6:.0f}M "
-        f"obs={args.obs_encoding} reward={args.reward_mode} "
-        f"({args.pop_size} agents in parallel via vmap)"
+        f"(all {total_agents} agents in parallel via vmap)"
     )
 
-    rng = jax.random.PRNGKey(args.seed)
+    # Flatten all seeds × pop_size into one vmap call
     train_fn = make_parallel_sp_train(config)
-    pop_rngs = jax.random.split(rng, args.pop_size)
+    all_rngs = []
+    for seed in seeds:
+        base_rng = jax.random.PRNGKey(seed)
+        all_rngs.append(jax.random.split(base_rng, pop_size))
+    all_rngs = jnp.concatenate(all_rngs)  # (total_agents,)
 
     t0 = time.time()
-    result = train_fn(pop_rngs)
+    result = train_fn(all_rngs)
     jax.block_until_ready(result["final_params"])
     elapsed = time.time() - t0
 
-    mean_rewards = result["metrics"]["mean_reward"]
-    for i in range(args.pop_size):
-        print(f"  Agent {i}: final mean reward = {float(mean_rewards[i, -1]):.4f}")
+    mean_rewards = result["metrics"]["mean_reward"]  # (total_agents, num_updates)
+    for i in range(total_agents):
+        seed_idx = i // pop_size
+        agent_idx = i % pop_size
+        print(f"  seed {seeds[seed_idx]} agent {agent_idx}: "
+              f"final reward = {float(mean_rewards[i, -1]):.4f}")
 
     print(f"[SP-POP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 
+    # Split and save per-seed
     os.makedirs("checkpoints", exist_ok=True)
-    ckpt = {
-        "final_params": jax.device_get(result["final_params"]),
-        "ckpt_params": jax.device_get(result["ckpt_params"]),
-        "ckpt_rewards": jax.device_get(result["ckpt_rewards"]),
-        "config": config,
-    }
-    ckpt_path = f"checkpoints/sp_pop_seed{args.seed}.pkl"
-    with open(ckpt_path, "wb") as f:
-        pickle.dump(ckpt, f)
-    print(f"[SP-POP] Saved to {ckpt_path}")
+    for si, seed in enumerate(seeds):
+        start, end = si * pop_size, (si + 1) * pop_size
+        ckpt = {
+            "final_params": jax.device_get(
+                jax.tree.map(lambda x: x[start:end], result["final_params"])),
+            "ckpt_params": jax.device_get(
+                jax.tree.map(lambda x: x[start:end], result["ckpt_params"])),
+            "ckpt_rewards": jax.device_get(result["ckpt_rewards"][start:end]),
+            "config": config,
+        }
+        ckpt_path = f"checkpoints/sp_pop_seed{seed}.pkl"
+        with open(ckpt_path, "wb") as f:
+            pickle.dump(ckpt, f)
+        print(f"  Saved seed {seed} to {ckpt_path}")
 
 
 if __name__ == "__main__":

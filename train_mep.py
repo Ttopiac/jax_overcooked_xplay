@@ -383,7 +383,10 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="MEP training (2-phase)")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seeds", type=str, default="0",
+                        help="Comma-separated seeds for population training")
+    parser.add_argument("--ego-seeds", type=str, default=None,
+                        help="Comma-separated seeds for ego training (default: same as --seeds)")
     parser.add_argument("--pop-timesteps", type=int, default=60_000_000)
     parser.add_argument("--ego-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
@@ -410,59 +413,84 @@ def main():
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
+    pop_seeds = [int(s) for s in args.seeds.split(",")]
+    ego_seeds = [int(s) for s in args.ego_seeds.split(",")] if args.ego_seeds else pop_seeds
     config = get_config(args)
 
-    # Phase 1: MEP population training
+    # Phase 1: MEP population training (vmap over seeds)
     pop_rounds = config["num_updates"] // config["epoch_updates"]
-    print(f"[MEP] Phase 1: Training population (pop={args.pop_size}, "
+    print(f"[MEP] Phase 1: pop={args.pop_size}, seeds={pop_seeds}, "
           f"{pop_rounds} rounds × {args.epoch_updates} updates/round, "
-          f"{args.pop_timesteps/1e6:.0f}M)")
+          f"{args.pop_timesteps/1e6:.0f}M ({len(pop_seeds)} seeds vmapped)")
 
     train_pop_fn, network, encoder = make_mep_pop_train(config)
-    rng = jax.random.PRNGKey(args.seed)
+    multi_pop_fn = jax.jit(jax.vmap(train_pop_fn))
+    pop_rngs = jnp.stack([jax.random.PRNGKey(s) for s in pop_seeds])
 
     t0 = time.time()
-    pop_result = train_pop_fn(rng)
-    jax.block_until_ready(pop_result["all_params"])
+    pop_results = multi_pop_fn(pop_rngs)
+    jax.block_until_ready(pop_results["all_params"])
     pop_time = time.time() - t0
 
-    pop_rewards = pop_result["metrics"]["mean_reward"]
-    print(f"[MEP] Phase 1 done in {pop_time:.1f}s ({pop_time/60:.1f} min). "
-          f"Final mean reward: {pop_rewards[-1]:.4f}")
+    for i, seed in enumerate(pop_seeds):
+        r = float(pop_results["metrics"]["mean_reward"][i, -1])
+        print(f"  seed {seed}: final pop reward = {r:.4f}")
+    print(f"[MEP] Phase 1 done in {pop_time:.1f}s ({pop_time/60:.1f} min)")
 
-    # Phase 2: Ego agent training
-    print(f"[MEP] Phase 2: Training ego agent ({config['ego_num_updates']} updates, "
-          f"{args.ego_timesteps/1e6:.0f}M)")
-
-    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
-    ego_train_fn = make_mep_ego_train(config, network, encoder, reward_shaper)
-
-    pop_params = jax.device_get(pop_result["all_params"])
-    pop_params = jax.device_put(pop_params)
-
-    rng = jax.random.PRNGKey(args.seed + 3000)
-    t0 = time.time()
-    ego_result = ego_train_fn(rng, pop_params)
-    jax.block_until_ready(ego_result)
-    ego_time = time.time() - t0
-
-    ego_rewards = ego_result["metrics"]["mean_reward"]
-    print(f"[MEP] Phase 2 done in {ego_time:.1f}s ({ego_time/60:.1f} min). "
-          f"Final mean reward: {ego_rewards[-1]:.4f}")
-
-    # Save
+    # Save pop params per seed
     os.makedirs("checkpoints", exist_ok=True)
-    ckpt = {
-        "ego_params": jax.device_get(ego_result["train_state"].params),
-        "pop_params": jax.device_get(pop_result["all_params"]),
-        "config": config,
-        "pop_metrics": jax.device_get(pop_result["metrics"]),
-        "ego_metrics": jax.device_get(ego_result["metrics"]),
-    }
-    ckpt_path = f"checkpoints/mep{args.pop_size}_seed{args.seed}.pkl"
-    with open(ckpt_path, "wb") as f:
-        pickle.dump(ckpt, f)
-    print(f"[MEP] Saved to {ckpt_path}")
+    for i, seed in enumerate(pop_seeds):
+        pop_ckpt = {
+            "all_params": jax.device_get(jax.tree.map(lambda x: x[i], pop_results["all_params"])),
+            "config": config,
+        }
+        with open(f"checkpoints/mep{args.pop_size}_pop_seed{seed}.pkl", "wb") as f:
+            pickle.dump(pop_ckpt, f)
+
+    # Phase 2: Ego agent training (vmap over ego_seeds)
+    if config["ego_num_updates"] > 0 and ego_seeds:
+        print(f"[MEP] Phase 2: ego_seeds={ego_seeds}, "
+              f"{config['ego_num_updates']} updates, {args.ego_timesteps/1e6:.0f}M "
+              f"({len(ego_seeds)} seeds vmapped)")
+
+        reward_shaper = RewardShaper(
+            mode=config["reward_mode"],
+            reward_shaping_factor=config["reward_shaping_factor"],
+            reward_shaping_horizon=config["reward_shaping_horizon"],
+        )
+        ego_train_fn = make_mep_ego_train(config, network, encoder, reward_shaper)
+        multi_ego_fn = jax.jit(jax.vmap(ego_train_fn))
+
+        # Stack per-seed pop params for ego seeds
+        ego_pop_params = []
+        for seed in ego_seeds:
+            si = pop_seeds.index(seed)
+            ego_pop_params.append(jax.tree.map(lambda x: x[si], pop_results["all_params"]))
+        stacked_pop = jax.tree.map(lambda *xs: jnp.stack(xs), *ego_pop_params)
+
+        ego_rngs = jnp.stack([jax.random.PRNGKey(s + 3000) for s in ego_seeds])
+
+        t0 = time.time()
+        ego_results = multi_ego_fn(ego_rngs, stacked_pop)
+        jax.block_until_ready(ego_results)
+        ego_time = time.time() - t0
+
+        for i, seed in enumerate(ego_seeds):
+            r = float(ego_results["metrics"]["mean_reward"][i, -1])
+            print(f"  seed {seed}: final ego reward = {r:.4f}")
+        print(f"[MEP] Phase 2 done in {ego_time:.1f}s ({ego_time/60:.1f} min)")
+
+        # Save ego per seed
+        for i, seed in enumerate(ego_seeds):
+            ckpt = {
+                "ego_params": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["train_state"].params)),
+                "pop_params": jax.device_get(jax.tree.map(lambda x: x[pop_seeds.index(seed)], pop_results["all_params"])),
+                "config": config,
+                "ego_metrics": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["metrics"])),
+            }
+            with open(f"checkpoints/mep{args.pop_size}_seed{seed}.pkl", "wb") as f:
+                pickle.dump(ckpt, f)
+            print(f"  Saved seed {seed} to checkpoints/mep{args.pop_size}_seed{seed}.pkl")
 
 
 if __name__ == "__main__":

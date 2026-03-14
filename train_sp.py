@@ -182,7 +182,8 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Self-Play training")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seeds", type=str, default="0",
+                        help="Comma-separated seeds, e.g. '0,1,2'")
     parser.add_argument("--total-timesteps", type=int, default=120_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
@@ -204,33 +205,38 @@ def main():
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
+    seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
-    print(f"[SP] seed={args.seed} updates={config['num_updates']} "
+
+    print(f"[SP] seeds={seeds} updates={config['num_updates']} "
           f"obs={args.obs_encoding} reward={args.reward_mode} "
           f"layouts={len(LAYOUT_NAMES)} envs/layout={args.num_envs_per_layout}")
 
-    rng = jax.random.PRNGKey(args.seed)
+    # Build train function and vmap over seeds
     train_fn = make_train(config)
+    multi_train_fn = jax.jit(jax.vmap(train_fn))
+
+    rngs = jnp.stack([jax.random.PRNGKey(s) for s in seeds])
 
     t0 = time.time()
-    result = train_fn(rng)
-    jax.block_until_ready(result)
+    results = multi_train_fn(rngs)
+    jax.block_until_ready(results)
     elapsed = time.time() - t0
 
-    rewards = result["metrics"]["mean_reward"]
-    print(f"[SP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min). "
-          f"Final mean reward: {rewards[-1]:.4f}")
-
+    # Save per-seed
     os.makedirs("checkpoints", exist_ok=True)
-    ckpt = {
-        "params": jax.device_get(result["train_state"].params),
-        "config": config,
-        "metrics": jax.device_get(result["metrics"]),
-    }
-    ckpt_path = f"checkpoints/sp_seed{args.seed}.pkl"
-    with open(ckpt_path, "wb") as f:
-        pickle.dump(ckpt, f)
-    print(f"[SP] Saved to {ckpt_path}")
+    for i, seed in enumerate(seeds):
+        reward = float(results["metrics"]["mean_reward"][i, -1])
+        print(f"  seed {seed}: final mean reward = {reward:.4f}")
+        ckpt = {
+            "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
+            "config": config,
+            "metrics": jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"])),
+        }
+        with open(f"checkpoints/sp_seed{seed}.pkl", "wb") as f:
+            pickle.dump(ckpt, f)
+
+    print(f"[SP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 
 
 if __name__ == "__main__":

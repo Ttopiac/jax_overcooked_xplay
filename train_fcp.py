@@ -204,7 +204,8 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="FCP training")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seeds", type=str, default="0",
+                        help="Comma-separated seeds, e.g. '0,1,2'")
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
@@ -224,51 +225,67 @@ def main():
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     args = parser.parse_args()
 
+    seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
 
-    pop_path = f"checkpoints/sp_pop_seed{args.seed}.pkl"
-    print(f"[FCP] Loading SP population from {pop_path}")
-    with open(pop_path, "rb") as f:
-        pop_data = pickle.load(f)
+    # Load per-seed SP population and categorize
+    all_high, all_mid, all_low = [], [], []
+    for seed in seeds:
+        pop_path = f"checkpoints/sp_pop_seed{seed}.pkl"
+        print(f"[FCP] Loading {pop_path}")
+        with open(pop_path, "rb") as f:
+            pop_data = pickle.load(f)
+        ckpt_params = jax.device_put(pop_data["ckpt_params"])
+        ckpt_rewards = jax.device_put(pop_data["ckpt_rewards"])
+        h, m, l = categorize_checkpoints(ckpt_params, ckpt_rewards)
+        all_high.append(h)
+        all_mid.append(m)
+        all_low.append(l)
 
-    ckpt_params = jax.device_put(pop_data["ckpt_params"])
-    ckpt_rewards = jax.device_put(pop_data["ckpt_rewards"])
+    n_h = jax.tree.leaves(all_high[0])[0].shape[0]
+    n_m = jax.tree.leaves(all_mid[0])[0].shape[0]
+    n_l = jax.tree.leaves(all_low[0])[0].shape[0]
+    print(f"[FCP] Tiers per seed: HIGH={n_h} MED={n_m} LOW={n_l}")
 
-    high_params, mid_params, low_params = categorize_checkpoints(ckpt_params, ckpt_rewards)
-    n_h = jax.tree.leaves(high_params)[0].shape[0]
-    n_m = jax.tree.leaves(mid_params)[0].shape[0]
-    n_l = jax.tree.leaves(low_params)[0].shape[0]
-    print(f"[FCP] Tiers: HIGH={n_h} MED={n_m} LOW={n_l}")
+    # Stack per-seed tier params: (n_seeds, n_tier, ...)
+    stacked_high = jax.tree.map(lambda *xs: jnp.stack(xs), *all_high)
+    stacked_mid = jax.tree.map(lambda *xs: jnp.stack(xs), *all_mid)
+    stacked_low = jax.tree.map(lambda *xs: jnp.stack(xs), *all_low)
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
+    reward_shaper = RewardShaper(
+        mode=config["reward_mode"],
+        reward_shaping_factor=config["reward_shaping_factor"],
+        reward_shaping_horizon=config["reward_shaping_horizon"],
+    )
     action_dim = make("overcooked", layout=overcooked_layouts[LAYOUT_NAMES[0]]).action_space("agent_0").n
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
-    print(f"[FCP] Training FCP agent ({config['num_updates']} updates, "
-          f"{args.total_timesteps/1e6:.0f}M)")
     fcp_train_fn = make_fcp_train(config, network, encoder, reward_shaper)
+    multi_fcp_fn = jax.jit(jax.vmap(fcp_train_fn))
 
-    rng = jax.random.PRNGKey(args.seed + 2000)
+    rngs = jnp.stack([jax.random.PRNGKey(s + 2000) for s in seeds])
+
+    print(f"[FCP] Training {len(seeds)} seeds vmapped ({config['num_updates']} updates, "
+          f"{args.total_timesteps/1e6:.0f}M)")
     t0 = time.time()
-    result = fcp_train_fn(rng, high_params, mid_params, low_params)
-    jax.block_until_ready(result)
+    results = multi_fcp_fn(rngs, stacked_high, stacked_mid, stacked_low)
+    jax.block_until_ready(results)
     elapsed = time.time() - t0
 
-    rewards = result["metrics"]["mean_reward"]
-    print(f"[FCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min). "
-          f"Final mean reward: {rewards[-1]:.4f}")
-
     os.makedirs("checkpoints", exist_ok=True)
-    ckpt = {
-        "params": jax.device_get(result["train_state"].params),
-        "config": config,
-        "metrics": jax.device_get(result["metrics"]),
-    }
-    ckpt_path = f"checkpoints/fcp_seed{args.seed}.pkl"
-    with open(ckpt_path, "wb") as f:
-        pickle.dump(ckpt, f)
-    print(f"[FCP] Saved to {ckpt_path}")
+    for i, seed in enumerate(seeds):
+        r = float(results["metrics"]["mean_reward"][i, -1])
+        print(f"  seed {seed}: final reward = {r:.4f}")
+        ckpt = {
+            "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
+            "config": config,
+            "metrics": jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"])),
+        }
+        with open(f"checkpoints/fcp_seed{seed}.pkl", "wb") as f:
+            pickle.dump(ckpt, f)
+
+    print(f"[FCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 
 
 if __name__ == "__main__":

@@ -208,7 +208,8 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="BCP training (Carroll-style)")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seeds", type=str, default="0",
+                        help="Comma-separated seeds, e.g. '0,1,2'")
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
@@ -230,71 +231,67 @@ def main():
                         help="Env timesteps over which bc_factor anneals 0->1. 0=always BC.")
     args = parser.parse_args()
 
+    seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
 
-    # Load BC population
-    bc_path = f"checkpoints/bc_seed{args.seed}.pkl"
-    print(f"[BCP] Loading BC population from {bc_path}")
-    with open(bc_path, "rb") as f:
-        bc_data = pickle.load(f)
+    # Load per-seed BC populations and stack
+    all_seed_bc_params = []
+    bc_hidden_dims = None
+    for seed in seeds:
+        bc_path = f"checkpoints/bc_seed{seed}.pkl"
+        print(f"[BCP] Loading {bc_path}")
+        with open(bc_path, "rb") as f:
+            bc_data = pickle.load(f)
+        bc_hidden_dims = bc_data["bc_hidden_dims"]
+        bc_params_list = []
+        for layout in bc_data["layouts"]:
+            bc_params_list.extend(bc_data["bc_params"][layout])
+        stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *bc_params_list)
+        all_seed_bc_params.append(stacked)
 
-    bc_hidden_dims = bc_data["bc_hidden_dims"]
-    n_bc_agents = bc_data["num_bc_agents"]
-    bc_layouts = bc_data["layouts"]
-    print(f"[BCP] BC population: {n_bc_agents} agents/layout, layouts={bc_layouts}")
-    print(f"[BCP] BC architecture: {bc_hidden_dims}")
-    print(f"[BCP] Training on JaxMARL layouts: {BCP_JAXMARL_LAYOUTS}")
+    total_bc = jax.tree.leaves(all_seed_bc_params[0])[0].shape[0]
+    # Stack: (n_seeds, total_bc, ...)
+    stacked_all_bc = jax.tree.map(lambda *xs: jnp.stack(xs), *all_seed_bc_params)
+    stacked_all_bc = jax.device_put(stacked_all_bc)
+    print(f"[BCP] {total_bc} BC agents/seed, BC arch={bc_hidden_dims}, "
+          f"layouts={BCP_JAXMARL_LAYOUTS}")
 
-    # For now, use all BC agents across layouts as one pool
-    # Stack all BC params into (total_bc_agents, ...)
-    all_bc_params_list = []
-    for layout in bc_layouts:
-        all_bc_params_list.extend(bc_data["bc_params"][layout])
-
-    stacked_bc_params = jax.tree.map(lambda *xs: jnp.stack(xs), *all_bc_params_list)
-    total_bc = len(all_bc_params_list)
-    stacked_bc_params = jax.device_put(stacked_bc_params)
-    print(f"[BCP] Total BC agents in pool: {total_bc}")
-
-    # Setup networks
     encoder = ObsEncoder(mode=config["obs_encoding"])
     reward_shaper = RewardShaper(
         mode=config["reward_mode"],
         reward_shaping_factor=config["reward_shaping_factor"],
         reward_shaping_horizon=config["reward_shaping_horizon"],
     )
-    action_dim = 6
-    ego_network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
-    bc_network = ActorCritic(action_dim=action_dim, hidden_dims=bc_hidden_dims)
-
-    print(f"[BCP] Training PPO_BC ({config['num_updates']} updates, "
-          f"{args.total_timesteps/1e6:.0f}M, "
-          f"bc_anneal_horizon={args.bc_anneal_horizon} env steps)")
+    ego_network = ActorCritic(action_dim=6, hidden_dims=config["hidden_dims"])
+    bc_network = ActorCritic(action_dim=6, hidden_dims=bc_hidden_dims)
 
     bcp_train_fn = make_bcp_train(
         config, ego_network, bc_network, encoder, reward_shaper, total_bc
     )
+    multi_bcp_fn = jax.jit(jax.vmap(bcp_train_fn))
 
-    rng = jax.random.PRNGKey(args.seed + 1000)
+    rngs = jnp.stack([jax.random.PRNGKey(s + 1000) for s in seeds])
+
+    print(f"[BCP] Training {len(seeds)} seeds vmapped ({config['num_updates']} updates, "
+          f"{args.total_timesteps/1e6:.0f}M)")
     t0 = time.time()
-    result = bcp_train_fn(rng, stacked_bc_params)
-    jax.block_until_ready(result)
+    results = multi_bcp_fn(rngs, stacked_all_bc)
+    jax.block_until_ready(results)
     elapsed = time.time() - t0
 
-    rewards = result["metrics"]["mean_reward"]
-    print(f"[BCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min). "
-          f"Final mean reward: {rewards[-1]:.4f}")
-
     os.makedirs("checkpoints", exist_ok=True)
-    ckpt = {
-        "params": jax.device_get(result["train_state"].params),
-        "config": config,
-        "metrics": jax.device_get(result["metrics"]),
-    }
-    ckpt_path = f"checkpoints/bcp_seed{args.seed}.pkl"
-    with open(ckpt_path, "wb") as f:
-        pickle.dump(ckpt, f)
-    print(f"[BCP] Saved to {ckpt_path}")
+    for i, seed in enumerate(seeds):
+        r = float(results["metrics"]["mean_reward"][i, -1])
+        print(f"  seed {seed}: final reward = {r:.4f}")
+        ckpt = {
+            "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
+            "config": config,
+            "metrics": jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"])),
+        }
+        with open(f"checkpoints/bcp_seed{seed}.pkl", "wb") as f:
+            pickle.dump(ckpt, f)
+
+    print(f"[BCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 
 
 if __name__ == "__main__":
