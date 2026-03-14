@@ -398,8 +398,8 @@ def main():
     parser.add_argument("--ent-coef", type=float, default=0.01)
     parser.add_argument("--num-epochs", type=int, default=4)
     parser.add_argument("--minibatch-size", type=int, default=512)
-    parser.add_argument("--hidden-dim", type=int, default=256)
-    parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--hidden-dim", type=int, default=64)
+    parser.add_argument("--num-layers", type=int, default=3)
     parser.add_argument("--pop-size", type=int, default=16)
     parser.add_argument("--mep-alpha", type=float, default=0.01)
     parser.add_argument("--priority-alpha", type=float, default=3.0,
