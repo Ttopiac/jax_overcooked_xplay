@@ -31,7 +31,7 @@ def make_train(config):
     n_env_total = n_env_l * n_layouts
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"], magnifier=config["reward_magnifier"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"])
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     def train(rng):
@@ -175,7 +175,6 @@ def get_config(args):
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
-        "reward_magnifier": args.reward_magnifier,
     }
 
 
@@ -197,9 +196,8 @@ def main():
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full"])
-    parser.add_argument("--reward-mode", type=str, default="originaler",
-                        choices=["originaler", "sparse", "solo"])
-    parser.add_argument("--reward-magnifier", type=float, default=3.0)
+    parser.add_argument("--reward-mode", type=str, default="shaped",
+                        choices=["shaped", "sparse"])
     args = parser.parse_args()
 
     config = get_config(args)

@@ -154,7 +154,6 @@ def get_config(args):
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
-        "reward_magnifier": args.reward_magnifier,
     }
 
 
@@ -175,8 +174,7 @@ def main():
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
-    parser.add_argument("--reward-mode", type=str, default="originaler")
-    parser.add_argument("--reward-magnifier", type=float, default=3.0)
+    parser.add_argument("--reward-mode", type=str, default="shaped")
     args = parser.parse_args()
 
     config = get_config(args)
@@ -195,7 +193,7 @@ def main():
     print(f"[BCP] Best SP agent idx={best_idx} score={float(agent_scores[best_idx]):.4f}")
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"], magnifier=config["reward_magnifier"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"])
     action_dim = make("overcooked", layout=overcooked_layouts[LAYOUT_NAMES[0]]).action_space("agent_0").n
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 

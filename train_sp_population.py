@@ -34,7 +34,7 @@ def make_parallel_sp_train(config):
     n_env_total = n_env_l * n_layouts
 
     encoder = ObsEncoder(mode=config["obs_encoding"])
-    reward_shaper = RewardShaper(mode=config["reward_mode"], magnifier=config["reward_magnifier"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"])
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     num_updates = config["num_updates"]
@@ -201,7 +201,6 @@ def get_config(args):
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "obs_encoding": args.obs_encoding,
         "reward_mode": args.reward_mode,
-        "reward_magnifier": args.reward_magnifier,
         "pop_size": args.pop_size,
         "num_checkpoints": args.num_checkpoints,
     }
@@ -227,9 +226,8 @@ def main():
     parser.add_argument("--num-checkpoints", type=int, default=15)
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full"])
-    parser.add_argument("--reward-mode", type=str, default="originaler",
-                        choices=["originaler", "sparse", "solo"])
-    parser.add_argument("--reward-magnifier", type=float, default=3.0)
+    parser.add_argument("--reward-mode", type=str, default="shaped",
+                        choices=["shaped", "sparse"])
     args = parser.parse_args()
 
     config = get_config(args)
