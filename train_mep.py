@@ -400,8 +400,7 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=512)
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--num-layers", type=int, default=2)
-    parser.add_argument("--pop-size", type=int, default=5,
-                        help="MEP population size (paper default: 4-5)")
+    parser.add_argument("--pop-size", type=int, default=16)
     parser.add_argument("--mep-alpha", type=float, default=0.01)
     parser.add_argument("--priority-alpha", type=float, default=3.0,
                         help="Prioritized sampling exponent for ego phase (MEP paper: 3.0)")
