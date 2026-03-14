@@ -24,6 +24,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
+from nxplay import shuffle_agent_positions
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -34,6 +35,7 @@ def make_mep_pop_train(config):
     agent_names = envs[0].agents
     action_dim = envs[0].action_space(agent_names[0]).n
     n_layouts = len(LAYOUT_NAMES)
+    num_agents = config["num_agents"]
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
     pop_size = config["pop_size"]
@@ -107,63 +109,78 @@ def make_mep_pop_train(config):
                 ego_ts, all_env_states, all_obs, rng = inner_carry
                 update_idx = round_idx * epoch_updates + update_offset
 
-                all_traj = []
+                all_agent_traj = []
                 all_sparse = []
                 new_states = []
                 new_obs_list = []
 
-                for i, env in enumerate(envs):
+                for layout_i, env in enumerate(envs):
 
                     def _env_step(carry, inner_step, _env=env):
                         env_state, obs, rng = carry
-                        rng, a0r, a1r, sr = jax.random.split(rng, 4)
+                        rng, action_rng, step_rng = jax.random.split(rng, 3)
+                        action_rngs = jax.random.split(action_rng, num_agents)
 
-                        obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
-                        obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
+                        # All N agents use ego params (self-play in pop phase)
+                        transitions = []
+                        actions_list = []
+                        for k in range(num_agents):
+                            obs_k = encoder.encode(obs, env_state, k, n_env_l)
+                            pi, val = network.apply(ego_ts.params, obs_k)
+                            a = pi.sample(seed=action_rngs[k])
+                            lp = pi.log_prob(a)
+                            transitions.append((obs_k, a, lp, val))
+                            actions_list.append(a)
 
-                        pi_0, val_0 = network.apply(ego_ts.params, obs_0)
-                        pi_1, _ = network.apply(ego_ts.params, obs_1)
-
-                        a0 = pi_0.sample(seed=a0r)
-                        a1 = pi_1.sample(seed=a1r)
-                        lp0 = pi_0.log_prob(a0)
-
-                        actions = {agent_names[0]: a0, agent_names[1]: a1}
-                        step_rngs = jax.random.split(sr, n_env_l)
+                        actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                        step_rngs = jax.random.split(step_rng, n_env_l)
                         next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
-                            step_rngs, env_state, actions
+                            step_rngs, env_state, actions_dict
                         )
 
                         step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                        reward = reward_shaper.compute(rewards, infos, agent_names[0], step_count)
-                        bonus = _compute_entropy_bonus(obs_0, a0, all_params)
-                        reward = reward + bonus
+                        done_all = dones["__all__"]
 
-                        trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
+                        # Build transitions for all N agents
+                        # Add entropy bonus to agent 0's reward
+                        trans_list = []
+                        for k in range(num_agents):
+                            obs_k, a_k, lp_k, val_k = transitions[k]
+                            reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                            if k == 0:
+                                bonus = _compute_entropy_bonus(obs_k, a_k, all_params)
+                                reward_k = reward_k + bonus
+                            trans_list.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+
+                        stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *trans_list)
                         sparse_r = rewards[agent_names[0]]
-                        return (next_state, next_obs, rng), (trans, sparse_r)
+                        return (next_state, next_obs, rng), (stacked, sparse_r)
 
                     rng, scan_rng = jax.random.split(rng)
-                    carry_i, (traj, sparse_r) = jax.lax.scan(
+                    carry_i, (traj_stacked, sparse_r) = jax.lax.scan(
                         _env_step,
-                        (all_env_states[i], all_obs[i], scan_rng),
+                        (all_env_states[layout_i], all_obs[layout_i], scan_rng),
                         jnp.arange(config["num_steps"]),
                     )
                     new_states.append(carry_i[0])
                     new_obs_list.append(carry_i[1])
-                    all_traj.append(traj)
+                    traj_flat = jax.tree.map(
+                        lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked
+                    )
+                    all_agent_traj.append(traj_flat)
                     all_sparse.append(sparse_r)
 
                 all_env_states = tuple(new_states)
                 all_obs = tuple(new_obs_list)
 
-                traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj)
+                traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_agent_traj)
 
                 all_last_vals = []
                 for j in range(len(envs)):
-                    o0 = encoder.encode(all_obs[j], all_env_states[j], 0, n_env_l)
-                    _, lv = network.apply(ego_ts.params, o0)
-                    all_last_vals.append(lv)
+                    for k in range(num_agents):
+                        o = encoder.encode(all_obs[j], all_env_states[j], k, n_env_l)
+                        _, lv = network.apply(ego_ts.params, o)
+                        all_last_vals.append(lv)
                 last_val = jnp.concatenate(all_last_vals)
 
                 advantages, returns = compute_gae(
@@ -211,21 +228,19 @@ def make_mep_pop_train(config):
 
 
 def make_mep_ego_train(config, network, encoder, reward_shaper):
-    """Phase 2: Train ego agent against MEP population with prioritized sampling.
+    """Phase 2: Train ego against MEP population with N-XPlay + prioritized sampling."""
+    num_agents = config["num_agents"]
+    num_unseen = config["num_unseen"]
+    num_ego = num_agents - num_unseen
+    homo = config["xplay_mode"] == "homo"
 
-    Prioritized sampling (matching MEP paper):
-      - Track per-partner mean reward
-      - Lower reward → higher sampling probability
-      - priority = (1/reward_rank) ^ alpha, then normalize
-    """
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=config["num_agents"]) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents) for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
     priority_alpha = config.get("priority_alpha", 3.0)
 
     def train(rng, pop_params):
-        """pop_params: tree of (pop_size, ...)"""
         pop_size = jax.tree.leaves(pop_params)[0].shape[0]
 
         rng, init_rng = jax.random.split(rng)
@@ -242,99 +257,125 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
         all_env_states = tuple(all_env_states)
         all_obs = tuple(all_obs)
 
-        # Track per-partner performance for prioritized sampling
-        partner_rewards = jnp.zeros(pop_size)  # running mean reward per partner
+        partner_rewards = jnp.zeros(pop_size)
 
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng, partner_rewards = runner_state
 
-            # Prioritized sampling: lower reward → higher probability
-            # Use inverse rank with alpha exponent (matching MEP paper)
-            rng, partner_rng = jax.random.split(rng)
-
-            # Compute priorities: invert rewards (lower = higher priority)
+            # Prioritized partner selection
+            rng, partner_rng, shuffle_rng = jax.random.split(rng, 3)
             epsilon = 1e-6
             inv_rewards = 1.0 / (partner_rewards + epsilon)
-            # Rank-based: sort and use ranks
-            ranks = jnp.argsort(jnp.argsort(-inv_rewards)) + 1  # rank 1 = highest priority
+            ranks = jnp.argsort(jnp.argsort(-inv_rewards)) + 1
             priorities = (1.0 / ranks) ** priority_alpha
             probs = priorities / priorities.sum()
 
-            partner_idx = jax.random.choice(partner_rng, pop_size, p=probs)
-            partner_params = jax.tree.map(lambda x: x[partner_idx], pop_params)
+            # Select X partners via prioritized sampling
+            if num_unseen > 0:
+                if homo:
+                    partner_idx = jax.random.choice(partner_rng, pop_size, p=probs)
+                    single = jax.tree.map(lambda x: x[partner_idx], pop_params)
+                    partner_params = jax.tree.map(
+                        lambda x: jnp.broadcast_to(x[None], (num_unseen, *x.shape)), single
+                    )
+                else:
+                    indices = jax.random.choice(partner_rng, pop_size, shape=(num_unseen,),
+                                                p=probs, replace=num_unseen > pop_size)
+                    partner_params = jax.tree.map(lambda x: x[indices], pop_params)
+                    partner_idx = indices[0]  # track first partner for EMA
+            else:
+                partner_params = None
+                partner_idx = jnp.int32(0)
 
-            all_traj = []
+            # Shuffle positions
+            all_env_states_s = tuple(
+                jax.vmap(lambda s, k: shuffle_agent_positions(k, s, num_agents))(
+                    all_env_states[i], jax.random.split(shuffle_rng, n_env_l)
+                ) for i in range(len(envs))
+            )
+
+            all_ego_traj = []
             all_sparse = []
             new_states = []
             new_obs_list = []
 
-            for i, env in enumerate(envs):
+            for layout_i, env in enumerate(envs):
 
                 def _env_step(carry, inner_step, _env=env):
                     env_state, obs, rng = carry
-                    rng, a0r, a1r, sr = jax.random.split(rng, 4)
+                    rng, action_rng, step_rng = jax.random.split(rng, 3)
+                    action_rngs = jax.random.split(action_rng, num_agents)
 
-                    obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
-                    obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
+                    all_obs_enc = [encoder.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
 
-                    pi_0, val_0 = network.apply(train_state.params, obs_0)
-                    pi_1, _ = network.apply(partner_params, obs_1)
+                    ego_transitions = []
+                    actions_list = []
 
-                    a0 = pi_0.sample(seed=a0r)
-                    a1 = pi_1.sample(seed=a1r)
-                    lp0 = pi_0.log_prob(a0)
+                    for k in range(num_ego):
+                        pi, val = network.apply(train_state.params, all_obs_enc[k])
+                        a = pi.sample(seed=action_rngs[k])
+                        lp = pi.log_prob(a)
+                        ego_transitions.append((all_obs_enc[k], a, lp, val))
+                        actions_list.append(a)
 
-                    actions = {agent_names[0]: a0, agent_names[1]: a1}
-                    step_rngs = jax.random.split(sr, n_env_l)
+                    for j in range(num_unseen):
+                        p_params = jax.tree.map(lambda x: x[j], partner_params)
+                        pi, _ = network.apply(p_params, all_obs_enc[num_ego + j])
+                        a = pi.sample(seed=action_rngs[num_ego + j])
+                        actions_list.append(a)
+
+                    actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                    step_rngs = jax.random.split(step_rng, n_env_l)
                     next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
-                        step_rngs, env_state, actions
+                        step_rngs, env_state, actions_dict
                     )
 
                     step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                    reward = reward_shaper.compute(rewards, infos, agent_names[0], step_count)
+                    done_all = dones["__all__"]
 
-                    trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
+                    transitions = []
+                    for k in range(num_ego):
+                        obs_k, a_k, lp_k, val_k = ego_transitions[k]
+                        reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                        transitions.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+
+                    stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *transitions)
                     sparse_r = rewards[agent_names[0]]
-                    return (next_state, next_obs, rng), (trans, sparse_r)
+                    return (next_state, next_obs, rng), (stacked, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj, sparse_r) = jax.lax.scan(
+                carry, (traj_stacked, sparse_r) = jax.lax.scan(
                     _env_step,
-                    (all_env_states[i], all_obs[i], scan_rng),
+                    (all_env_states_s[layout_i], all_obs[layout_i], scan_rng),
                     jnp.arange(config["num_steps"]),
                 )
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
-                all_traj.append(traj)
+                traj_flat = jax.tree.map(lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked)
+                all_ego_traj.append(traj_flat)
                 all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
 
-            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj)
+            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_ego_traj)
 
             all_last_vals = []
-            for i in range(len(envs)):
-                o0 = encoder.encode(all_obs[i], all_env_states[i], 0, n_env_l)
-                _, lv = network.apply(train_state.params, o0)
-                all_last_vals.append(lv)
+            for layout_i in range(len(envs)):
+                for k in range(num_ego):
+                    o = encoder.encode(all_obs[layout_i], all_env_states[layout_i], k, n_env_l)
+                    _, lv = network.apply(train_state.params, o)
+                    all_last_vals.append(lv)
             last_val = jnp.concatenate(all_last_vals)
 
-            advantages, returns = compute_gae(
-                traj_batch, last_val, config["gamma"], config["gae_lambda"]
-            )
+            advantages, returns = compute_gae(traj_batch, last_val, config["gamma"], config["gae_lambda"])
             flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
-            flat_adv = advantages.reshape(-1)
-            flat_ret = returns.reshape(-1)
+            flat_adv, flat_ret = advantages.reshape(-1), returns.reshape(-1)
 
             rng, update_rng = jax.random.split(rng)
-            train_state, loss_info = ppo_update(
-                train_state, flat_batch, flat_adv, flat_ret, config, update_rng
-            )
+            train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
 
             mean_reward = jnp.mean(traj_batch.reward)
-
-            # Update running mean reward for this partner (exponential moving avg)
             ema_alpha = 0.1
             partner_rewards = partner_rewards.at[partner_idx].set(
                 (1 - ema_alpha) * partner_rewards[partner_idx] + ema_alpha * mean_reward
@@ -345,9 +386,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
             return (train_state, all_env_states, all_obs, rng, partner_rewards), metrics
 
         runner_state = (train_state, all_env_states, all_obs, rng, partner_rewards)
-        runner_state, metrics = jax.lax.scan(
-            _update_step, runner_state, jnp.arange(config["ego_num_updates"])
-        )
+        runner_state, metrics = jax.lax.scan(_update_step, runner_state, jnp.arange(config["ego_num_updates"]))
         return {"train_state": runner_state[0], "metrics": metrics}
 
     return jax.jit(train)
