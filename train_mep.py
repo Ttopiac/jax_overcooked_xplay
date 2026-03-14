@@ -30,9 +30,9 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 def make_mep_pop_train(config):
     """Phase 1: Train MEP population with entropy bonus."""
-    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
-    agents = envs[0].agents
-    action_dim = envs[0].action_space(agents[0]).n
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=config["num_agents"]) for name in LAYOUT_NAMES]
+    agent_names = envs[0].agents
+    action_dim = envs[0].action_space(agent_names[0]).n
     n_layouts = len(LAYOUT_NAMES)
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
@@ -128,19 +128,19 @@ def make_mep_pop_train(config):
                         a1 = pi_1.sample(seed=a1r)
                         lp0 = pi_0.log_prob(a0)
 
-                        actions = {agents[0]: a0, agents[1]: a1}
+                        actions = {agent_names[0]: a0, agent_names[1]: a1}
                         step_rngs = jax.random.split(sr, n_env_l)
                         next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
                             step_rngs, env_state, actions
                         )
 
                         step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                        reward = reward_shaper.compute(rewards, infos, agents[0], step_count)
+                        reward = reward_shaper.compute(rewards, infos, agent_names[0], step_count)
                         bonus = _compute_entropy_bonus(obs_0, a0, all_params)
                         reward = reward + bonus
 
                         trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                        sparse_r = rewards[agents[0]]
+                        sparse_r = rewards[agent_names[0]]
                         return (next_state, next_obs, rng), (trans, sparse_r)
 
                     rng, scan_rng = jax.random.split(rng)
@@ -218,8 +218,8 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
       - Lower reward → higher sampling probability
       - priority = (1/reward_rank) ^ alpha, then normalize
     """
-    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
-    agents = envs[0].agents
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=config["num_agents"]) for name in LAYOUT_NAMES]
+    agent_names = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
     priority_alpha = config.get("priority_alpha", 3.0)
@@ -284,17 +284,17 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                     a1 = pi_1.sample(seed=a1r)
                     lp0 = pi_0.log_prob(a0)
 
-                    actions = {agents[0]: a0, agents[1]: a1}
+                    actions = {agent_names[0]: a0, agent_names[1]: a1}
                     step_rngs = jax.random.split(sr, n_env_l)
                     next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
                         step_rngs, env_state, actions
                     )
 
                     step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                    reward = reward_shaper.compute(rewards, infos, agents[0], step_count)
+                    reward = reward_shaper.compute(rewards, infos, agent_names[0], step_count)
 
                     trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                    sparse_r = rewards[agents[0]]
+                    sparse_r = rewards[agent_names[0]]
                     return (next_state, next_obs, rng), (trans, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
@@ -364,6 +364,9 @@ def get_config(args):
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
+        "num_agents": args.num_agents,
+        "num_unseen": args.num_unseen,
+        "xplay_mode": args.xplay_mode,
         "num_envs_per_layout": n_env_l,
         "num_steps": num_steps,
         "num_updates": pop_updates,
@@ -394,6 +397,9 @@ def main():
     parser.add_argument("--ego-seeds", type=str, default=None,
                         help="Comma-separated seeds for ego training (default: same as --seeds)")
     parser.add_argument("--pop-timesteps", type=int, default=60_000_000)
+    parser.add_argument("--num-agents", type=int, default=2)
+    parser.add_argument("--num-unseen", type=int, default=1)
+    parser.add_argument("--xplay-mode", type=str, default="hetero", choices=["hetero", "homo"])
     parser.add_argument("--ego-timesteps", type=int, default=60_000_000)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)

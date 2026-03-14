@@ -26,9 +26,11 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 
 def make_parallel_sp_train(config):
-    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
-    agents = envs[0].agents
-    action_dim = envs[0].action_space(agents[0]).n
+    num_agents = config["num_agents"]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents)
+            for name in LAYOUT_NAMES]
+    agent_names = envs[0].agents
+    action_dim = envs[0].action_space(agent_names[0]).n
     n_layouts = len(LAYOUT_NAMES)
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
@@ -66,73 +68,72 @@ def make_parallel_sp_train(config):
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards = runner_state
 
-            all_traj_0 = []
-            all_traj_1 = []
+            all_agent_traj = []
             all_sparse = []
             new_states = []
             new_obs_list = []
 
-            for i, env in enumerate(envs):
+            for layout_i, env in enumerate(envs):
 
                 def _env_step(carry, inner_step, _env=env):
                     env_state, obs, rng = carry
-                    rng, a0r, a1r, sr = jax.random.split(rng, 4)
+                    rng, action_rng, step_rng = jax.random.split(rng, 3)
+                    action_rngs = jax.random.split(action_rng, num_agents)
 
-                    obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
-                    obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
+                    transitions = []
+                    actions_list = []
+                    for k in range(num_agents):
+                        obs_k = encoder.encode(obs, env_state, k, n_env_l)
+                        pi, val = network.apply(train_state.params, obs_k)
+                        a = pi.sample(seed=action_rngs[k])
+                        lp = pi.log_prob(a)
+                        transitions.append((obs_k, a, lp, val))
+                        actions_list.append(a)
 
-                    pi_0, val_0 = network.apply(train_state.params, obs_0)
-                    pi_1, val_1 = network.apply(train_state.params, obs_1)
-
-                    a0 = pi_0.sample(seed=a0r)
-                    a1 = pi_1.sample(seed=a1r)
-                    lp0 = pi_0.log_prob(a0)
-                    lp1 = pi_1.log_prob(a1)
-
-                    actions = {agents[0]: a0, agents[1]: a1}
-                    step_rngs = jax.random.split(sr, n_env_l)
+                    actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                    step_rngs = jax.random.split(step_rng, n_env_l)
                     next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
-                        step_rngs, env_state, actions
+                        step_rngs, env_state, actions_dict
                     )
 
                     step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                    reward_0 = reward_shaper.compute(rewards, infos, agents[0], step_count)
-                    reward_1 = reward_shaper.compute(rewards, infos, agents[1], step_count)
                     done_all = dones["__all__"]
 
-                    t0 = Transition(obs_0, a0, reward_0, done_all, lp0, val_0)
-                    t1 = Transition(obs_1, a1, reward_1, done_all, lp1, val_1)
-                    sparse_r = rewards[agents[0]]
-                    return (next_state, next_obs, rng), (t0, t1, sparse_r)
+                    trans_list = []
+                    for k in range(num_agents):
+                        obs_k, a_k, lp_k, val_k = transitions[k]
+                        reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                        trans_list.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+
+                    stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *trans_list)
+                    sparse_r = rewards[agent_names[0]]
+                    return (next_state, next_obs, rng), (stacked, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj_0, traj_1, sparse_r) = jax.lax.scan(
+                carry, (traj_stacked, sparse_r) = jax.lax.scan(
                     _env_step,
-                    (all_env_states[i], all_obs[i], scan_rng),
+                    (all_env_states[layout_i], all_obs[layout_i], scan_rng),
                     jnp.arange(config["num_steps"]),
                 )
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
-                all_traj_0.append(traj_0)
-                all_traj_1.append(traj_1)
+                traj_flat = jax.tree.map(
+                    lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked
+                )
+                all_agent_traj.append(traj_flat)
                 all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
 
-            combined_0 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_0)
-            combined_1 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_1)
-            traj_batch = jax.tree.map(
-                lambda x, y: jnp.concatenate([x, y], axis=1), combined_0, combined_1
-            )
+            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_agent_traj)
 
             all_last_vals = []
-            for i, env in enumerate(envs):
-                o0 = encoder.encode(all_obs[i], all_env_states[i], 0, n_env_l)
-                o1 = encoder.encode(all_obs[i], all_env_states[i], 1, n_env_l)
-                _, lv0 = network.apply(train_state.params, o0)
-                _, lv1 = network.apply(train_state.params, o1)
-                all_last_vals.extend([lv0, lv1])
+            for layout_i in range(len(envs)):
+                for k in range(num_agents):
+                    o = encoder.encode(all_obs[layout_i], all_env_states[layout_i], k, n_env_l)
+                    _, lv = network.apply(train_state.params, o)
+                    all_last_vals.append(lv)
             last_val = jnp.concatenate(all_last_vals)
 
             advantages, returns = compute_gae(
@@ -187,10 +188,11 @@ def get_config(args):
     num_steps = args.num_steps
     total_timesteps = args.total_timesteps
     num_updates = total_timesteps // (num_steps * n_env_total)
-    batch_size = num_steps * n_env_total * 2
+    batch_size = num_steps * n_env_total * args.num_agents
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
+        "num_agents": args.num_agents,
         "num_envs_per_layout": n_env_l,
         "num_steps": num_steps,
         "num_updates": num_updates,
@@ -216,6 +218,7 @@ def main():
     parser.add_argument("--seeds", type=str, default="0",
                         help="Comma-separated seeds, e.g. '0,1,2,3,4'")
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
+    parser.add_argument("--num-agents", type=int, default=2)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
     parser.add_argument("--lr", type=float, default=3e-4)

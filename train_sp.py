@@ -1,7 +1,7 @@
-"""Self-Play (SP) training in JAX.
+"""Self-Play (SP) training in JAX with N-agent support.
 
-Both agents share the same network parameters. Transitions from both agents
-across all 5 layouts are used to update the shared policy via PPO.
+All N agents share the same policy. Transitions from all N agents
+are collected for PPO update. Pure self-play (X=0).
 """
 
 import argparse
@@ -23,22 +23,25 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 
 def make_train(config):
-    envs = [Overcooked(layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
-    agents = envs[0].agents
-    action_dim = envs[0].action_space(agents[0]).n
+    num_agents = config["num_agents"]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents)
+            for name in LAYOUT_NAMES]
+    agent_names = envs[0].agents
+    action_dim = envs[0].action_space(agent_names[0]).n
     n_layouts = len(LAYOUT_NAMES)
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
 
     encoder = ObsEncoder()
-    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"],
+                                 reward_shaping_factor=config["reward_shaping_factor"],
+                                 reward_shaping_horizon=config["reward_shaping_horizon"])
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     def train(rng):
         rng, init_rng = jax.random.split(rng)
         train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
 
-        # Init envs for all 5 layouts
         all_env_states = []
         all_obs = []
         for env in envs:
@@ -53,76 +56,77 @@ def make_train(config):
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng = runner_state
 
-            all_traj_0 = []
-            all_traj_1 = []
+            all_agent_traj = []  # list of per-layout stacked transitions
             all_sparse = []
             new_states = []
             new_obs_list = []
 
-            for i, env in enumerate(envs):
+            for layout_i, env in enumerate(envs):
 
                 def _env_step(carry, inner_step, _env=env):
                     env_state, obs, rng = carry
-                    rng, a0r, a1r, sr = jax.random.split(rng, 4)
+                    rng, action_rng, step_rng = jax.random.split(rng, 3)
+                    action_rngs = jax.random.split(action_rng, num_agents)
 
-                    obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
-                    obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
+                    # All N agents use ego params
+                    transitions = []
+                    actions_list = []
+                    for k in range(num_agents):
+                        obs_k = encoder.encode(obs, env_state, k, n_env_l)
+                        pi, val = network.apply(train_state.params, obs_k)
+                        a = pi.sample(seed=action_rngs[k])
+                        lp = pi.log_prob(a)
+                        transitions.append((obs_k, a, lp, val))
+                        actions_list.append(a)
 
-                    pi_0, val_0 = network.apply(train_state.params, obs_0)
-                    pi_1, val_1 = network.apply(train_state.params, obs_1)
-
-                    a0 = pi_0.sample(seed=a0r)
-                    a1 = pi_1.sample(seed=a1r)
-                    lp0 = pi_0.log_prob(a0)
-                    lp1 = pi_1.log_prob(a1)
-
-                    actions = {agents[0]: a0, agents[1]: a1}
-                    step_rngs = jax.random.split(sr, n_env_l)
+                    actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                    step_rngs = jax.random.split(step_rng, n_env_l)
                     next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
-                        step_rngs, env_state, actions
+                        step_rngs, env_state, actions_dict
                     )
 
                     step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                    reward_0 = reward_shaper.compute(rewards, infos, agents[0], step_count)
-                    reward_1 = reward_shaper.compute(rewards, infos, agents[1], step_count)
                     done_all = dones["__all__"]
 
-                    t0 = Transition(obs_0, a0, reward_0, done_all, lp0, val_0)
-                    t1 = Transition(obs_1, a1, reward_1, done_all, lp1, val_1)
-                    sparse_r = rewards[agents[0]]
-                    return (next_state, next_obs, rng), (t0, t1, sparse_r)
+                    # Build Transition for each agent
+                    trans_list = []
+                    for k in range(num_agents):
+                        obs_k, a_k, lp_k, val_k = transitions[k]
+                        reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                        trans_list.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+
+                    stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *trans_list)
+                    sparse_r = rewards[agent_names[0]]
+                    return (next_state, next_obs, rng), (stacked, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj_0, traj_1, sparse_r) = jax.lax.scan(
+                carry, (traj_stacked, sparse_r) = jax.lax.scan(
                     _env_step,
-                    (all_env_states[i], all_obs[i], scan_rng),
+                    (all_env_states[layout_i], all_obs[layout_i], scan_rng),
                     jnp.arange(config["num_steps"]),
                 )
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
-                all_traj_0.append(traj_0)
-                all_traj_1.append(traj_1)
-                all_sparse.append(sparse_r)  # (num_steps, n_env_l)
+                # traj_stacked: (T, N, n_env_l, ...) -> (T, N*n_env_l, ...)
+                traj_flat = jax.tree.map(
+                    lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked
+                )
+                all_agent_traj.append(traj_flat)
+                all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
 
-            # Concatenate across layouts: (T, n_env_l, ...) -> (T, n_env_total, ...)
-            combined_0 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_0)
-            combined_1 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_1)
-            # Concatenate both agents: (T, n_env_total*2, ...)
-            traj_batch = jax.tree.map(
-                lambda x, y: jnp.concatenate([x, y], axis=1), combined_0, combined_1
-            )
+            # Concatenate across layouts
+            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_agent_traj)
 
-            # Bootstrap values
+            # Bootstrap values for all N agents
             all_last_vals = []
-            for i, env in enumerate(envs):
-                o0 = encoder.encode(all_obs[i], all_env_states[i], 0, n_env_l)
-                o1 = encoder.encode(all_obs[i], all_env_states[i], 1, n_env_l)
-                _, lv0 = network.apply(train_state.params, o0)
-                _, lv1 = network.apply(train_state.params, o1)
-                all_last_vals.extend([lv0, lv1])
+            for layout_i in range(len(envs)):
+                for k in range(num_agents):
+                    o = encoder.encode(all_obs[layout_i], all_env_states[layout_i], k, n_env_l)
+                    _, lv = network.apply(train_state.params, o)
+                    all_last_vals.append(lv)
             last_val = jnp.concatenate(all_last_vals)
 
             advantages, returns = compute_gae(
@@ -138,9 +142,7 @@ def make_train(config):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
-            # Mean sparse reward across all layouts and envs
             mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
-
             metrics = {
                 "mean_reward": jnp.mean(traj_batch.reward),
                 "mean_sparse_reward": mean_sparse,
@@ -164,10 +166,11 @@ def get_config(args):
     num_steps = args.num_steps
     total_timesteps = args.total_timesteps
     num_updates = total_timesteps // (num_steps * n_env_total)
-    batch_size = num_steps * n_env_total * 2  # both agents
+    batch_size = num_steps * n_env_total * args.num_agents
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
+        "num_agents": args.num_agents,
         "num_envs_per_layout": n_env_l,
         "num_steps": num_steps,
         "num_updates": num_updates,
@@ -188,9 +191,9 @@ def get_config(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Self-Play training")
-    parser.add_argument("--seeds", type=str, default="0",
-                        help="Comma-separated seeds, e.g. '0,1,2'")
+    parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--total-timesteps", type=int, default=120_000_000)
+    parser.add_argument("--num-agents", type=int, default=2)
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -203,8 +206,6 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=512)
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=3)
-    parser.add_argument("--obs-encoding", type=str, default="egocentric",
-                        choices=["egocentric", "full"])
     parser.add_argument("--reward-mode", type=str, default="shaped",
                         choices=["shaped", "sparse"])
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
@@ -215,14 +216,11 @@ def main():
     seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
 
-    print(f"[SP] seeds={seeds} updates={config['num_updates']} "
-          f"obs={args.obs_encoding} reward={args.reward_mode} "
-          f"layouts={len(LAYOUT_NAMES)} envs/layout={args.num_envs_per_layout}")
+    print(f"[SP] seeds={seeds} N={args.num_agents} updates={config['num_updates']} "
+          f"reward={args.reward_mode}")
 
-    # Build train function and vmap over seeds
     train_fn = make_train(config)
     multi_train_fn = jax.jit(jax.vmap(train_fn))
-
     rngs = jnp.stack([jax.random.PRNGKey(s) for s in seeds])
 
     t0 = time.time()
@@ -230,30 +228,26 @@ def main():
     jax.block_until_ready(results)
     elapsed = time.time() - t0
 
-    # Save per-seed and log to W&B
     os.makedirs("checkpoints", exist_ok=True)
     tags = args.wandb_tags.split(",") if args.wandb_tags else ["sp"]
     for i, seed in enumerate(seeds):
         reward = float(results["metrics"]["mean_reward"][i, -1])
-        print(f"  seed {seed}: final mean reward = {reward:.4f}")
-
+        sparse = float(results["metrics"]["mean_sparse_reward"][i, -1])
+        print(f"  seed {seed}: reward={reward:.4f}, sparse={sparse:.4f}")
         metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"]))
         ckpt = {
             "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
-            "config": config,
-            "metrics": metrics_i,
+            "config": config, "metrics": metrics_i,
         }
-        with open(f"checkpoints/sp_seed{seed}.pkl", "wb") as f:
+        with open(f"checkpoints/sp_n{args.num_agents}_seed{seed}.pkl", "wb") as f:
             pickle.dump(ckpt, f)
-
-        # W&B logging
         logger = WandbLogger(
-            project=args.wandb_project, name=f"sp_seed{seed}",
+            project=args.wandb_project, name=f"sp_n{args.num_agents}_seed{seed}",
             config={**config, "seed": seed, "method": "SP"},
             enabled=args.wandb, group=args.wandb_group, tags=tags,
         )
         logger.log_training_curves(metrics_i, prefix="train")
-        logger.log_summary({"final_reward": reward, "train_time_s": elapsed})
+        logger.log_summary({"final_reward": reward, "final_sparse": sparse, "train_time_s": elapsed})
         logger.finish()
 
     print(f"[SP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")

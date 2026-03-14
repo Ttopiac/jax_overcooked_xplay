@@ -1,13 +1,8 @@
-"""Behavioral Cloning Play (BCP) training in JAX.
+"""Behavioral Cloning Play (BCP) with N-XPlay support.
 
-Matches Carroll et al. (2019):
-  1. Load pre-trained BC population (from train_bc.py) — 3 BC agents per layout
-  2. Train PPO agent on ONLY the 3 layouts with human data
-  3. bc_schedule: anneal bc_factor 0→1 over bc_anneal_horizon ENV TIMESTEPS
-  4. Each update: coin flip → partner is random BC agent or self-play
-
-BC uses 64×64 MLP architecture (matching Carroll).
-RL ego uses 256×256 MLP (matching all other methods).
+N-X ego/clones use ego network (3×64).
+X partner slots use BC network (2×64) or ego (self-play), based on bc_schedule.
+Only trains on 3 layouts with human data.
 """
 
 import argparse
@@ -24,29 +19,26 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
+from nxplay import select_partners, shuffle_agent_positions
 from train_bc import BC_HIDDEN_DIMS, BC_LAYOUTS
 
-# BCP only trains on layouts with human data
-# JaxMARL layout names for the 3 Carroll layouts
 BCP_JAXMARL_LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring"]
 
 
 def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc_agents):
-    """Build BCP training function.
+    num_agents = config["num_agents"]
+    num_unseen = config["num_unseen"]
+    num_ego = num_agents - num_unseen
+    homo = config["xplay_mode"] == "homo"
 
-    ego_network: 256×256 MLP for the ego agent
-    bc_network: 64×64 MLP for BC agents (different architecture!)
-    """
-    envs = [Overcooked(layout=overcooked_layouts[name]) for name in BCP_JAXMARL_LAYOUTS]
-    agents = envs[0].agents
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents)
+            for name in BCP_JAXMARL_LAYOUTS]
+    agent_names = envs[0].agents
     n_layouts = len(BCP_JAXMARL_LAYOUTS)
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
 
     def train(rng, all_bc_params):
-        """
-        all_bc_params: stacked BC params, tree of (n_bc_agents, ...)
-        """
         rng, init_rng = jax.random.split(rng)
         train_state = create_train_state(init_rng, ego_network, (encoder.obs_flat_dim,), config["lr"])
 
@@ -61,106 +53,113 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
         all_env_states = tuple(all_env_states)
         all_obs = tuple(all_obs)
 
-        bc_horizon_steps = config["bc_anneal_horizon"]  # in env timesteps
+        bc_horizon_steps = config["bc_anneal_horizon"]
 
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng, cumulative_steps = runner_state
 
-            # bc_factor based on cumulative ENV TIMESTEPS (not PPO updates)
-            bc_factor = jnp.where(
-                bc_horizon_steps <= 0,
-                1.0,
-                jnp.minimum(cumulative_steps / bc_horizon_steps, 1.0),
-            )
-
-            # Coin flip: use BC or self-play?
-            rng, coin_rng, bc_select_rng = jax.random.split(rng, 3)
+            # bc_factor annealing
+            bc_factor = jnp.where(bc_horizon_steps <= 0, 1.0,
+                                  jnp.minimum(cumulative_steps / bc_horizon_steps, 1.0))
+            rng, coin_rng, partner_rng, shuffle_rng = jax.random.split(rng, 4)
             use_bc = jax.random.uniform(coin_rng) < bc_factor
 
-            # Select random BC agent from population
-            bc_idx = jax.random.randint(bc_select_rng, (), 0, n_bc_agents)
-            bc_params = jax.tree.map(lambda x: x[bc_idx], all_bc_params)
+            # Select BC partners
+            bc_partner_params = select_partners(partner_rng, all_bc_params, num_unseen, homo=homo)
 
-            all_traj = []
+            # Shuffle positions
+            all_env_states_s = tuple(
+                jax.vmap(lambda s, k: shuffle_agent_positions(k, s, num_agents))(
+                    all_env_states[i], jax.random.split(shuffle_rng, n_env_l)
+                ) for i in range(len(envs))
+            )
+
+            all_ego_traj = []
             all_sparse = []
             new_states = []
             new_obs_list = []
 
-            for i, env in enumerate(envs):
+            for layout_i, env in enumerate(envs):
 
                 def _env_step(carry, inner_step, _env=env):
                     env_state, obs, rng = carry
-                    rng, a0r, a1r, sr = jax.random.split(rng, 4)
+                    rng, action_rng, step_rng = jax.random.split(rng, 3)
+                    action_rngs = jax.random.split(action_rng, num_agents)
 
-                    obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
-                    obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
+                    all_obs_enc = [encoder.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
 
-                    # Ego: 256×256 network
-                    pi_0, val_0 = ego_network.apply(train_state.params, obs_0)
+                    ego_transitions = []
+                    actions_list = []
 
-                    # Partner: BC (64×64) or self-play (256×256)
-                    bc_pi, _ = bc_network.apply(bc_params, obs_1)
-                    sp_pi, _ = ego_network.apply(train_state.params, obs_1)
+                    # Ego/clone agents
+                    for k in range(num_ego):
+                        pi, val = ego_network.apply(train_state.params, all_obs_enc[k])
+                        a = pi.sample(seed=action_rngs[k])
+                        lp = pi.log_prob(a)
+                        ego_transitions.append((all_obs_enc[k], a, lp, val))
+                        actions_list.append(a)
 
-                    # Select partner action based on use_bc flag
-                    a0 = pi_0.sample(seed=a0r)
-                    a1_bc = bc_pi.sample(seed=a1r)
-                    a1_sp = sp_pi.sample(seed=a1r)
-                    a1 = jnp.where(use_bc, a1_bc, a1_sp)
-                    lp0 = pi_0.log_prob(a0)
+                    # Partner agents: BC or self-play based on bc_factor
+                    for j in range(num_unseen):
+                        p_params = jax.tree.map(lambda x: x[j], bc_partner_params)
+                        bc_pi, _ = bc_network.apply(p_params, all_obs_enc[num_ego + j])
+                        sp_pi, _ = ego_network.apply(train_state.params, all_obs_enc[num_ego + j])
+                        a_bc = bc_pi.sample(seed=action_rngs[num_ego + j])
+                        a_sp = sp_pi.sample(seed=action_rngs[num_ego + j])
+                        a = jnp.where(use_bc, a_bc, a_sp)
+                        actions_list.append(a)
 
-                    actions = {agents[0]: a0, agents[1]: a1}
-                    step_rngs = jax.random.split(sr, n_env_l)
+                    actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                    step_rngs = jax.random.split(step_rng, n_env_l)
                     next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
-                        step_rngs, env_state, actions
+                        step_rngs, env_state, actions_dict
                     )
 
                     step_count = cumulative_steps + inner_step * n_env_total
-                    reward = reward_shaper.compute(rewards, infos, agents[0], step_count)
+                    done_all = dones["__all__"]
 
-                    trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                    sparse_r = rewards[agents[0]]
-                    return (next_state, next_obs, rng), (trans, sparse_r)
+                    transitions = []
+                    for k in range(num_ego):
+                        obs_k, a_k, lp_k, val_k = ego_transitions[k]
+                        reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                        transitions.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+
+                    stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *transitions)
+                    sparse_r = rewards[agent_names[0]]
+                    return (next_state, next_obs, rng), (stacked, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj, sparse_r) = jax.lax.scan(
+                carry, (traj_stacked, sparse_r) = jax.lax.scan(
                     _env_step,
-                    (all_env_states[i], all_obs[i], scan_rng),
+                    (all_env_states_s[layout_i], all_obs[layout_i], scan_rng),
                     jnp.arange(config["num_steps"]),
                 )
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
-                all_traj.append(traj)
+                traj_flat = jax.tree.map(lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked)
+                all_ego_traj.append(traj_flat)
                 all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
+            cumulative_steps = cumulative_steps + config["num_steps"] * n_env_total
 
-            # Update cumulative env steps
-            steps_this_update = config["num_steps"] * n_env_total
-            cumulative_steps = cumulative_steps + steps_this_update
-
-            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj)
+            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_ego_traj)
 
             all_last_vals = []
-            for i in range(len(envs)):
-                o0 = encoder.encode(all_obs[i], all_env_states[i], 0, n_env_l)
-                _, lv = ego_network.apply(train_state.params, o0)
-                all_last_vals.append(lv)
+            for layout_i in range(len(envs)):
+                for k in range(num_ego):
+                    o = encoder.encode(all_obs[layout_i], all_env_states[layout_i], k, n_env_l)
+                    _, lv = ego_network.apply(train_state.params, o)
+                    all_last_vals.append(lv)
             last_val = jnp.concatenate(all_last_vals)
 
-            advantages, returns = compute_gae(
-                traj_batch, last_val, config["gamma"], config["gae_lambda"]
-            )
-
+            advantages, returns = compute_gae(traj_batch, last_val, config["gamma"], config["gae_lambda"])
             flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
-            flat_adv = advantages.reshape(-1)
-            flat_ret = returns.reshape(-1)
+            flat_adv, flat_ret = advantages.reshape(-1), returns.reshape(-1)
 
             rng, update_rng = jax.random.split(rng)
-            train_state, loss_info = ppo_update(
-                train_state, flat_batch, flat_adv, flat_ret, config, update_rng
-            )
+            train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
 
             mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
             metrics = {
@@ -173,9 +172,7 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
 
         cumulative_steps = jnp.int32(0)
         runner_state = (train_state, all_env_states, all_obs, rng, cumulative_steps)
-        runner_state, metrics = jax.lax.scan(
-            _update_step, runner_state, jnp.arange(config["num_updates"])
-        )
+        runner_state, metrics = jax.lax.scan(_update_step, runner_state, jnp.arange(config["num_updates"]))
         return {"train_state": runner_state[0], "metrics": metrics}
 
     return jax.jit(train)
@@ -185,22 +182,22 @@ def get_config(args):
     n_env_l = args.num_envs_per_layout
     n_layouts = len(BCP_JAXMARL_LAYOUTS)
     n_env_total = n_env_l * n_layouts
-    num_steps = args.num_steps
-    num_updates = args.total_timesteps // (num_steps * n_env_total)
-    batch_size = num_steps * n_env_total
+    num_ego = args.num_agents - args.num_unseen
+    num_updates = args.total_timesteps // (args.num_steps * n_env_total)
+    batch_size = args.num_steps * n_env_total * num_ego
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
+        "num_agents": args.num_agents,
+        "num_unseen": args.num_unseen,
+        "xplay_mode": args.xplay_mode,
         "num_envs_per_layout": n_env_l,
-        "num_steps": num_steps,
+        "num_steps": args.num_steps,
         "num_updates": num_updates,
         "lr": args.lr,
-        "gamma": args.gamma,
-        "gae_lambda": args.gae_lambda,
-        "clip_eps": args.clip_eps,
-        "vf_coef": args.vf_coef,
-        "ent_coef": args.ent_coef,
-        "num_epochs": args.num_epochs,
+        "gamma": args.gamma, "gae_lambda": args.gae_lambda,
+        "clip_eps": args.clip_eps, "vf_coef": args.vf_coef,
+        "ent_coef": args.ent_coef, "num_epochs": args.num_epochs,
         "minibatch_size": minibatch_size,
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
         "reward_mode": args.reward_mode,
@@ -211,10 +208,12 @@ def get_config(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="BCP training (Carroll-style)")
-    parser.add_argument("--seeds", type=str, default="0",
-                        help="Comma-separated seeds, e.g. '0,1,2'")
+    parser = argparse.ArgumentParser(description="BCP with N-XPlay")
+    parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--total-timesteps", type=int, default=60_000_000)
+    parser.add_argument("--num-agents", type=int, default=2)
+    parser.add_argument("--num-unseen", type=int, default=1)
+    parser.add_argument("--xplay-mode", type=str, default="hetero", choices=["hetero", "homo"])
     parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -227,58 +226,50 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=512)
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=3)
-    parser.add_argument("--obs-encoding", type=str, default="egocentric")
     parser.add_argument("--reward-mode", type=str, default="shaped")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
-    parser.add_argument("--bc-anneal-horizon", type=int, default=8000,
-                        help="Env timesteps over which bc_factor anneals 0->1. 0=always BC.")
+    parser.add_argument("--bc-anneal-horizon", type=int, default=8000)
     setup_wandb_args(parser)
     args = parser.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     config = get_config(args)
 
-    # Load per-seed BC populations and stack
+    print(f"[BCP] N={args.num_agents}, X={args.num_unseen}, mode={args.xplay_mode}")
+
+    # Load BC populations
     all_seed_bc_params = []
     bc_hidden_dims = None
     for seed in seeds:
         bc_path = f"checkpoints/bc_seed{seed}.pkl"
-        print(f"[BCP] Loading {bc_path}")
+        print(f"  Loading {bc_path}")
         with open(bc_path, "rb") as f:
             bc_data = pickle.load(f)
         bc_hidden_dims = bc_data["bc_hidden_dims"]
-        bc_params_list = []
+        bc_list = []
         for layout in bc_data["layouts"]:
-            bc_params_list.extend(bc_data["bc_params"][layout])
-        stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *bc_params_list)
+            bc_list.extend(bc_data["bc_params"][layout])
+        stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *bc_list)
         all_seed_bc_params.append(stacked)
 
     total_bc = jax.tree.leaves(all_seed_bc_params[0])[0].shape[0]
-    # Stack: (n_seeds, total_bc, ...)
     stacked_all_bc = jax.tree.map(lambda *xs: jnp.stack(xs), *all_seed_bc_params)
     stacked_all_bc = jax.device_put(stacked_all_bc)
-    print(f"[BCP] {total_bc} BC agents/seed, BC arch={bc_hidden_dims}, "
-          f"layouts={BCP_JAXMARL_LAYOUTS}")
 
     encoder = ObsEncoder()
-    reward_shaper = RewardShaper(
-        mode=config["reward_mode"],
-        reward_shaping_factor=config["reward_shaping_factor"],
-        reward_shaping_horizon=config["reward_shaping_horizon"],
-    )
+    reward_shaper = RewardShaper(mode=config["reward_mode"],
+                                 reward_shaping_factor=config["reward_shaping_factor"],
+                                 reward_shaping_horizon=config["reward_shaping_horizon"])
     ego_network = ActorCritic(action_dim=6, hidden_dims=config["hidden_dims"])
     bc_network = ActorCritic(action_dim=6, hidden_dims=bc_hidden_dims)
 
-    bcp_train_fn = make_bcp_train(
-        config, ego_network, bc_network, encoder, reward_shaper, total_bc
-    )
+    bcp_train_fn = make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, total_bc)
     multi_bcp_fn = jax.jit(jax.vmap(bcp_train_fn))
 
     rngs = jnp.stack([jax.random.PRNGKey(s + 1000) for s in seeds])
 
-    print(f"[BCP] Training {len(seeds)} seeds vmapped ({config['num_updates']} updates, "
-          f"{args.total_timesteps/1e6:.0f}M)")
+    print(f"[BCP] Training {len(seeds)} seeds ({config['num_updates']} updates)")
     t0 = time.time()
     results = multi_bcp_fn(rngs, stacked_all_bc)
     jax.block_until_ready(results)
@@ -288,23 +279,21 @@ def main():
     tags = args.wandb_tags.split(",") if args.wandb_tags else ["bcp"]
     for i, seed in enumerate(seeds):
         r = float(results["metrics"]["mean_reward"][i, -1])
-        print(f"  seed {seed}: final reward = {r:.4f}")
+        sr = float(results["metrics"]["mean_sparse_reward"][i, -1])
+        print(f"  seed {seed}: reward={r:.4f}, sparse={sr:.4f}")
         metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"]))
         ckpt = {
             "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
-            "config": config,
-            "metrics": metrics_i,
+            "config": config, "metrics": metrics_i,
         }
-        with open(f"checkpoints/bcp_seed{seed}.pkl", "wb") as f:
+        with open(f"checkpoints/bcp_n{args.num_agents}x{args.num_unseen}_{args.xplay_mode}_seed{seed}.pkl", "wb") as f:
             pickle.dump(ckpt, f)
-
-        logger = WandbLogger(
-            project=args.wandb_project, name=f"bcp_seed{seed}",
-            config={**config, "seed": seed, "method": "BCP"},
-            enabled=args.wandb, group=args.wandb_group, tags=tags,
-        )
+        logger = WandbLogger(project=args.wandb_project,
+                             name=f"bcp_n{args.num_agents}x{args.num_unseen}_{args.xplay_mode}_seed{seed}",
+                             config={**config, "seed": seed, "method": "BCP"},
+                             enabled=args.wandb, group=args.wandb_group, tags=tags)
         logger.log_training_curves(metrics_i, prefix="train")
-        logger.log_summary({"final_reward": r, "train_time_s": elapsed})
+        logger.log_summary({"final_reward": r, "final_sparse": sr, "train_time_s": elapsed})
         logger.finish()
 
     print(f"[BCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
