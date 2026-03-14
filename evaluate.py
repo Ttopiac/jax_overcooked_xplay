@@ -83,7 +83,7 @@ def evaluate_episode(env, network, params_a, params_b, encoder, key, num_envs=32
         _step, (state, obs, total_sparse, key), None, length=400  # max_steps
     )
 
-    return float(total_sparse.mean())
+    return total_sparse.mean()
 
 
 def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_envs=32):
@@ -106,14 +106,14 @@ def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_
     for layout_name in layouts:
         env = Overcooked(layout=overcooked_layouts[layout_name], num_agents=2)
 
-        eval_fn = jax.jit(lambda key: evaluate_episode(
-            env, network, params, params, encoder, key, num_envs
-        ))
+        @jax.jit
+        def eval_fn(key, _env=env):
+            return evaluate_episode(_env, network, params, params, encoder, key, num_envs)
 
         batch_rewards = []
         for b in range(num_batches):
             key = jax.random.PRNGKey(b * 1000)
-            r = eval_fn(key)
+            r = float(eval_fn(key))
             batch_rewards.append(r)
 
         results[layout_name] = float(np.mean(batch_rewards))
@@ -123,25 +123,21 @@ def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_
 
 def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner,
                         encoder, layouts, num_episodes=100, num_envs=32):
-    """Evaluate ego agent paired with a different partner.
-
-    Returns:
-        dict: {layout_name: mean_sparse_reward}
-    """
+    """Evaluate ego agent paired with a different partner."""
     results = {}
     num_batches = max(1, num_episodes // num_envs)
 
     for layout_name in layouts:
         env = Overcooked(layout=overcooked_layouts[layout_name], num_agents=2)
 
-        eval_fn = jax.jit(lambda key: evaluate_episode(
-            env, network_ego, params_ego, params_partner, encoder, key, num_envs
-        ))
+        @jax.jit
+        def eval_fn(key, _env=env):
+            return evaluate_episode(_env, network_ego, params_ego, params_partner, encoder, key, num_envs)
 
         batch_rewards = []
         for b in range(num_batches):
             key = jax.random.PRNGKey(b * 1000 + 42)
-            r = eval_fn(key)
+            r = float(eval_fn(key))
             batch_rewards.append(r)
 
         results[layout_name] = float(np.mean(batch_rewards))
