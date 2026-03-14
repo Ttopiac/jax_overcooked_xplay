@@ -94,6 +94,7 @@ def make_fcp_train(config, network, encoder, reward_shaper):
             partner_params = _select_partner(partner_rng)
 
             all_traj = []
+            all_sparse = []
             new_states = []
             new_obs_list = []
 
@@ -123,10 +124,11 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                     reward = reward_shaper.compute(rewards, infos, agents[0], step_count)
 
                     trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                    return (next_state, next_obs, rng), trans
+                    sparse_r = rewards[agents[0]]
+                    return (next_state, next_obs, rng), (trans, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, traj = jax.lax.scan(
+                carry, (traj, sparse_r) = jax.lax.scan(
                     _env_step,
                     (all_env_states[i], all_obs[i], scan_rng),
                     jnp.arange(config["num_steps"]),
@@ -134,6 +136,7 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
                 all_traj.append(traj)
+                all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
@@ -160,8 +163,10 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
+            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
             metrics = {
                 "mean_reward": jnp.mean(traj_batch.reward),
+                "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
             return (train_state, all_env_states, all_obs, rng), metrics

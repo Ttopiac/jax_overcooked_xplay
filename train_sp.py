@@ -56,6 +56,7 @@ def make_train(config):
 
             all_traj_0 = []
             all_traj_1 = []
+            all_sparse = []
             new_states = []
             new_obs_list = []
 
@@ -89,10 +90,11 @@ def make_train(config):
 
                     t0 = Transition(obs_0, a0, reward_0, done_all, lp0, val_0)
                     t1 = Transition(obs_1, a1, reward_1, done_all, lp1, val_1)
-                    return (next_state, next_obs, rng), (t0, t1)
+                    sparse_r = rewards[agents[0]]
+                    return (next_state, next_obs, rng), (t0, t1, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj_0, traj_1) = jax.lax.scan(
+                carry, (traj_0, traj_1, sparse_r) = jax.lax.scan(
                     _env_step,
                     (all_env_states[i], all_obs[i], scan_rng),
                     jnp.arange(config["num_steps"]),
@@ -101,6 +103,7 @@ def make_train(config):
                 new_obs_list.append(carry[1])
                 all_traj_0.append(traj_0)
                 all_traj_1.append(traj_1)
+                all_sparse.append(sparse_r)  # (num_steps, n_env_l)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
@@ -136,8 +139,12 @@ def make_train(config):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
+            # Mean sparse reward across all layouts and envs
+            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
+
             metrics = {
                 "mean_reward": jnp.mean(traj_batch.reward),
+                "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
             return (train_state, all_env_states, all_obs, rng), metrics

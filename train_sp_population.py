@@ -69,6 +69,7 @@ def make_parallel_sp_train(config):
 
             all_traj_0 = []
             all_traj_1 = []
+            all_sparse = []
             new_states = []
             new_obs_list = []
 
@@ -102,10 +103,11 @@ def make_parallel_sp_train(config):
 
                     t0 = Transition(obs_0, a0, reward_0, done_all, lp0, val_0)
                     t1 = Transition(obs_1, a1, reward_1, done_all, lp1, val_1)
-                    return (next_state, next_obs, rng), (t0, t1)
+                    sparse_r = rewards[agents[0]]
+                    return (next_state, next_obs, rng), (t0, t1, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, (traj_0, traj_1) = jax.lax.scan(
+                carry, (traj_0, traj_1, sparse_r) = jax.lax.scan(
                     _env_step,
                     (all_env_states[i], all_obs[i], scan_rng),
                     jnp.arange(config["num_steps"]),
@@ -114,6 +116,7 @@ def make_parallel_sp_train(config):
                 new_obs_list.append(carry[1])
                 all_traj_0.append(traj_0)
                 all_traj_1.append(traj_1)
+                all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
@@ -148,6 +151,7 @@ def make_parallel_sp_train(config):
 
             # Checkpoint logic
             mean_reward = jnp.mean(traj_batch.reward)
+            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
             ck_idx = jnp.clip(update_idx // ck_interval, 0, num_ckpts - 1)
             is_boundary = (update_idx % ck_interval == 0)
 
@@ -161,7 +165,7 @@ def make_parallel_sp_train(config):
 
             return (
                 train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards
-            ), {"mean_reward": mean_reward}
+            ), {"mean_reward": mean_reward, "mean_sparse_reward": mean_sparse}
 
         init_state = (train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards)
         steps = jnp.arange(num_updates)

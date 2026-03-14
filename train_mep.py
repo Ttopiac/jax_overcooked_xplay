@@ -109,6 +109,7 @@ def make_mep_pop_train(config):
                 update_idx = round_idx * epoch_updates + update_offset
 
                 all_traj = []
+                all_sparse = []
                 new_states = []
                 new_obs_list = []
 
@@ -140,10 +141,11 @@ def make_mep_pop_train(config):
                         reward = reward + bonus
 
                         trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                        return (next_state, next_obs, rng), trans
+                        sparse_r = rewards[agents[0]]
+                        return (next_state, next_obs, rng), (trans, sparse_r)
 
                     rng, scan_rng = jax.random.split(rng)
-                    carry_i, traj = jax.lax.scan(
+                    carry_i, (traj, sparse_r) = jax.lax.scan(
                         _env_step,
                         (all_env_states[i], all_obs[i], scan_rng),
                         jnp.arange(config["num_steps"]),
@@ -151,6 +153,7 @@ def make_mep_pop_train(config):
                     new_states.append(carry_i[0])
                     new_obs_list.append(carry_i[1])
                     all_traj.append(traj)
+                    all_sparse.append(sparse_r)
 
                 all_env_states = tuple(new_states)
                 all_obs = tuple(new_obs_list)
@@ -262,6 +265,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
             partner_params = jax.tree.map(lambda x: x[partner_idx], pop_params)
 
             all_traj = []
+            all_sparse = []
             new_states = []
             new_obs_list = []
 
@@ -291,10 +295,11 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                     reward = reward_shaper.compute(rewards, infos, agents[0], step_count)
 
                     trans = Transition(obs_0, a0, reward, dones["__all__"], lp0, val_0)
-                    return (next_state, next_obs, rng), trans
+                    sparse_r = rewards[agents[0]]
+                    return (next_state, next_obs, rng), (trans, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
-                carry, traj = jax.lax.scan(
+                carry, (traj, sparse_r) = jax.lax.scan(
                     _env_step,
                     (all_env_states[i], all_obs[i], scan_rng),
                     jnp.arange(config["num_steps"]),
@@ -302,6 +307,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
                 all_traj.append(traj)
+                all_sparse.append(sparse_r)
 
             all_env_states = tuple(new_states)
             all_obs = tuple(new_obs_list)
@@ -335,7 +341,8 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                 (1 - ema_alpha) * partner_rewards[partner_idx] + ema_alpha * mean_reward
             )
 
-            metrics = {"mean_reward": mean_reward, "total_loss": loss_info["total_loss"]}
+            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
+            metrics = {"mean_reward": mean_reward, "mean_sparse_reward": mean_sparse, "total_loss": loss_info["total_loss"]}
             return (train_state, all_env_states, all_obs, rng, partner_rewards), metrics
 
         runner_state = (train_state, all_env_states, all_obs, rng, partner_rewards)
