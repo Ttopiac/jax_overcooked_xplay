@@ -1,12 +1,13 @@
 """Self-Play (SP) training in JAX.
 
 Both agents share the same network parameters. Transitions from both agents
-are used to update the shared policy via PPO.
+across all 5 layouts are used to update the shared policy via PPO.
 """
 
 import argparse
+import os
+import pickle
 import time
-from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -14,101 +15,123 @@ from jaxmarl import make
 from jaxmarl.environments.overcooked import overcooked_layouts
 
 from networks import ActorCritic
+from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
+from reward_shaping import RewardShaper
 
-
-def flatten_obs(obs, num_envs):
-    """Flatten (num_envs, H, W, C) uint8 obs to (num_envs, H*W*C) float32."""
-    return obs.reshape(num_envs, -1).astype(jnp.float32) 
+LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
 
 def make_train(config):
-    layout = overcooked_layouts[config["layout_name"]]
-    env = make("overcooked", layout=layout)
-    agents = env.agents  # ["agent_0", "agent_1"]
+    envs = [make("overcooked", layout=overcooked_layouts[name]) for name in LAYOUT_NAMES]
+    agents = envs[0].agents
+    action_dim = envs[0].action_space(agents[0]).n
+    n_layouts = len(LAYOUT_NAMES)
+    n_env_l = config["num_envs_per_layout"]
+    n_env_total = n_env_l * n_layouts
 
-    # Determine observation and action shapes
-    sample_key = jax.random.PRNGKey(0)
-    sample_obs, _ = env.reset(sample_key)
-    obs_shape = sample_obs[agents[0]].shape
-    obs_flat_dim = int(jnp.prod(jnp.array(obs_shape)))
-    action_dim = env.action_space(agents[0]).n
-
+    encoder = ObsEncoder(mode=config["obs_encoding"])
+    reward_shaper = RewardShaper(mode=config["reward_mode"], magnifier=config["reward_magnifier"])
     network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     def train(rng):
-        # Initialize
-        rng, init_rng, env_rng = jax.random.split(rng, 3)
-        train_state = create_train_state(init_rng, network, (obs_flat_dim,), config["lr"])
+        rng, init_rng = jax.random.split(rng)
+        train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
 
-        # Reset environments
-        env_rngs = jax.random.split(env_rng, config["num_envs"])
-        obs, env_state = jax.vmap(env.reset)(env_rngs)
+        # Init envs for all 5 layouts
+        all_env_states = []
+        all_obs = []
+        for env in envs:
+            rng, env_rng = jax.random.split(rng)
+            env_rngs = jax.random.split(env_rng, n_env_l)
+            obs, state = jax.vmap(env.reset)(env_rngs)
+            all_obs.append(obs)
+            all_env_states.append(state)
+        all_env_states = tuple(all_env_states)
+        all_obs = tuple(all_obs)
 
-        def _update_step(runner_state, unused):
-            train_state, env_state, obs, rng = runner_state
+        def _update_step(runner_state, update_idx):
+            train_state, all_env_states, all_obs, rng = runner_state
 
-            # --- Collect rollout ---
-            def _env_step(carry, unused):
-                env_state, obs, rng = carry
-                rng, act_rng0, act_rng1, step_rng = jax.random.split(rng, 4)
+            all_traj_0 = []
+            all_traj_1 = []
+            new_states = []
+            new_obs_list = []
 
-                # Both agents share same params
-                obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
-                obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
+            for i, env in enumerate(envs):
 
-                pi_0, val_0 = network.apply(train_state.params, obs_0)
-                pi_1, val_1 = network.apply(train_state.params, obs_1)
+                def _env_step(carry, inner_step, _env=env):
+                    env_state, obs, rng = carry
+                    rng, a0r, a1r, sr = jax.random.split(rng, 4)
 
-                a0 = pi_0.sample(seed=act_rng0)
-                a1 = pi_1.sample(seed=act_rng1)
-                lp0 = pi_0.log_prob(a0)
-                lp1 = pi_1.log_prob(a1)
+                    obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
+                    obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
 
-                actions = {agents[0]: a0, agents[1]: a1}
-                step_rngs = jax.random.split(step_rng, config["num_envs"])
-                next_obs, next_state, rewards, dones, infos = jax.vmap(env.step)(
-                    step_rngs, env_state, actions
+                    pi_0, val_0 = network.apply(train_state.params, obs_0)
+                    pi_1, val_1 = network.apply(train_state.params, obs_1)
+
+                    a0 = pi_0.sample(seed=a0r)
+                    a1 = pi_1.sample(seed=a1r)
+                    lp0 = pi_0.log_prob(a0)
+                    lp1 = pi_1.log_prob(a1)
+
+                    actions = {agents[0]: a0, agents[1]: a1}
+                    step_rngs = jax.random.split(sr, n_env_l)
+                    next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
+                        step_rngs, env_state, actions
+                    )
+
+                    step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
+                    reward_0 = reward_shaper.compute(rewards, infos, agents[0], step_count)
+                    reward_1 = reward_shaper.compute(rewards, infos, agents[1], step_count)
+                    done_all = dones["__all__"]
+
+                    t0 = Transition(obs_0, a0, reward_0, done_all, lp0, val_0)
+                    t1 = Transition(obs_1, a1, reward_1, done_all, lp1, val_1)
+                    return (next_state, next_obs, rng), (t0, t1)
+
+                rng, scan_rng = jax.random.split(rng)
+                carry, (traj_0, traj_1) = jax.lax.scan(
+                    _env_step,
+                    (all_env_states[i], all_obs[i], scan_rng),
+                    jnp.arange(config["num_steps"]),
                 )
+                new_states.append(carry[0])
+                new_obs_list.append(carry[1])
+                all_traj_0.append(traj_0)
+                all_traj_1.append(traj_1)
 
-                done_all = dones["__all__"]
-                # Use agent_0 reward (cooperative game, both agents get same reward)
-                reward = rewards[agents[0]]
+            all_env_states = tuple(new_states)
+            all_obs = tuple(new_obs_list)
 
-                trans_0 = Transition(obs_0, a0, reward, done_all, lp0, val_0)
-                trans_1 = Transition(obs_1, a1, reward, done_all, lp1, val_1)
-                return (next_state, next_obs, rng), (trans_0, trans_1)
-
-            carry, (traj_0, traj_1) = jax.lax.scan(
-                _env_step, (env_state, obs, rng), None, length=config["num_steps"]
-            )
-            env_state, obs, rng = carry
-
-            # Combine both agents' transitions: (T, N, ...) -> (T, 2N, ...)
+            # Concatenate across layouts: (T, n_env_l, ...) -> (T, n_env_total, ...)
+            combined_0 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_0)
+            combined_1 = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_traj_1)
+            # Concatenate both agents: (T, n_env_total*2, ...)
             traj_batch = jax.tree.map(
-                lambda x, y: jnp.concatenate([x, y], axis=1), traj_0, traj_1
+                lambda x, y: jnp.concatenate([x, y], axis=1), combined_0, combined_1
             )
 
-            # Bootstrap value
-            obs_0 = flatten_obs(obs[agents[0]], config["num_envs"])
-            obs_1 = flatten_obs(obs[agents[1]], config["num_envs"])
-            _, last_val_0 = network.apply(train_state.params, obs_0)
-            _, last_val_1 = network.apply(train_state.params, obs_1)
-            last_val = jnp.concatenate([last_val_0, last_val_1])
+            # Bootstrap values
+            all_last_vals = []
+            for i, env in enumerate(envs):
+                o0 = encoder.encode(all_obs[i], all_env_states[i], 0, n_env_l)
+                o1 = encoder.encode(all_obs[i], all_env_states[i], 1, n_env_l)
+                _, lv0 = network.apply(train_state.params, o0)
+                _, lv1 = network.apply(train_state.params, o1)
+                all_last_vals.extend([lv0, lv1])
+            last_val = jnp.concatenate(all_last_vals)
 
-            # GAE
             advantages, returns = compute_gae(
                 traj_batch, last_val, config["gamma"], config["gae_lambda"]
             )
 
-            # Flatten (T, 2N, ...) -> (T*2N, ...)
             flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
             flat_adv = advantages.reshape(-1)
             flat_ret = returns.reshape(-1)
 
-            # PPO update
             rng, update_rng = jax.random.split(rng)
-            train_state_new, loss_info = ppo_update(
+            train_state, loss_info = ppo_update(
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
@@ -116,12 +139,11 @@ def make_train(config):
                 "mean_reward": jnp.mean(traj_batch.reward),
                 "total_loss": loss_info["total_loss"],
             }
-            return (train_state_new, env_state, obs, rng), metrics
+            return (train_state, all_env_states, all_obs, rng), metrics
 
-        # Run training loop
-        runner_state = (train_state, env_state, obs, rng)
+        runner_state = (train_state, all_env_states, all_obs, rng)
         runner_state, metrics = jax.lax.scan(
-            _update_step, runner_state, None, length=config["num_updates"]
+            _update_step, runner_state, jnp.arange(config["num_updates"])
         )
         return {"train_state": runner_state[0], "metrics": metrics}
 
@@ -129,17 +151,17 @@ def make_train(config):
 
 
 def get_config(args):
-    num_envs = args.num_envs
+    n_env_l = args.num_envs_per_layout
+    n_layouts = len(LAYOUT_NAMES)
+    n_env_total = n_env_l * n_layouts
     num_steps = args.num_steps
     total_timesteps = args.total_timesteps
-    num_updates = total_timesteps // (num_steps * num_envs)
-    # For SP, batch includes both agents
-    batch_size = num_steps * num_envs * 2
+    num_updates = total_timesteps // (num_steps * n_env_total)
+    batch_size = num_steps * n_env_total * 2  # both agents
     minibatch_size = min(args.minibatch_size, batch_size)
 
     return {
-        "layout_name": args.layout,
-        "num_envs": num_envs,
+        "num_envs_per_layout": n_env_l,
         "num_steps": num_steps,
         "num_updates": num_updates,
         "lr": args.lr,
@@ -151,15 +173,17 @@ def get_config(args):
         "num_epochs": args.num_epochs,
         "minibatch_size": minibatch_size,
         "hidden_dims": tuple([args.hidden_dim] * args.num_layers),
+        "obs_encoding": args.obs_encoding,
+        "reward_mode": args.reward_mode,
+        "reward_magnifier": args.reward_magnifier,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description="Self-Play training")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--layout", type=str, default="cramped_room")
-    parser.add_argument("--total-timesteps", type=int, default=5_000_000)
-    parser.add_argument("--num-envs", type=int, default=32)
+    parser.add_argument("--total-timesteps", type=int, default=120_000_000)
+    parser.add_argument("--num-envs-per-layout", type=int, default=8)
     parser.add_argument("--num-steps", type=int, default=128)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -171,10 +195,17 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=512)
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--obs-encoding", type=str, default="egocentric",
+                        choices=["egocentric", "full"])
+    parser.add_argument("--reward-mode", type=str, default="shaped",
+                        choices=["shaped", "sparse"])
+    parser.add_argument("--reward-magnifier", type=float, default=3.0)
     args = parser.parse_args()
 
     config = get_config(args)
-    print(f"[SP] seed={args.seed} layout={args.layout} updates={config['num_updates']}")
+    print(f"[SP] seed={args.seed} updates={config['num_updates']} "
+          f"obs={args.obs_encoding} reward={args.reward_mode} "
+          f"layouts={len(LAYOUT_NAMES)} envs/layout={args.num_envs_per_layout}")
 
     rng = jax.random.PRNGKey(args.seed)
     train_fn = make_train(config)
@@ -185,20 +216,19 @@ def main():
     elapsed = time.time() - t0
 
     rewards = result["metrics"]["mean_reward"]
-    print(f"[SP] Done in {elapsed:.1f}s. Final mean reward: {rewards[-1]:.3f}")
+    print(f"[SP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min). "
+          f"Final mean reward: {rewards[-1]:.4f}")
 
-    # Save checkpoint
-    import pickle
+    os.makedirs("checkpoints", exist_ok=True)
     ckpt = {
         "params": jax.device_get(result["train_state"].params),
         "config": config,
         "metrics": jax.device_get(result["metrics"]),
     }
-    ckpt_path = f"checkpoints/sp_seed{args.seed}_{args.layout}.pkl"
-    import os; os.makedirs("checkpoints", exist_ok=True)
+    ckpt_path = f"checkpoints/sp_seed{args.seed}.pkl"
     with open(ckpt_path, "wb") as f:
         pickle.dump(ckpt, f)
-    print(f"[SP] Saved checkpoint to {ckpt_path}")
+    print(f"[SP] Saved to {ckpt_path}")
 
 
 if __name__ == "__main__":
