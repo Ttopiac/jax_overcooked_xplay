@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 export PATH="/home/nathan/anaconda3/lib/python3.12/site-packages/nvidia/cuda_nvcc/bin:$PATH"
 export XLA_FLAGS="--xla_gpu_enable_triton_gemm=false"
 
-mkdir -p checkpoints eval_results
+mkdir -p checkpoints reports/eval_results
 
 echo "=========================================="
 echo " 2-Player Overcooked Training + Evaluation"
@@ -24,7 +24,7 @@ for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/bc_seed${SEED}.pkl \
         --agent-type bc --bc-hidden-dim 64 --bc-num-layers 2 \
         --layouts cramped_room,asymm_advantages,coord_ring \
-        --output eval_results/bc_selfplay_seed${SEED}.json
+        --output reports/eval_results/bc_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -37,7 +37,7 @@ python train_sp_population.py --seeds 0,1,2,3,4 \
 echo "--- Eval: SP Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/sp_pop_seed${SEED}.pkl \
-        --agent-type pop --output eval_results/sp_pop_selfplay_seed${SEED}.json
+        --agent-type pop --output reports/eval_results/sp_pop_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -50,7 +50,7 @@ python train_sp.py --seeds 0,1,2 \
 echo "--- Eval: SP ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/sp_n2_seed${SEED}.pkl \
-        --output eval_results/sp_ego_selfplay_seed${SEED}.json
+        --output reports/eval_results/sp_ego_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -64,12 +64,12 @@ python train_mep.py --seeds 0,1,2,3,4 --ego-seeds 0,1,2 \
 echo "--- Eval: MEP-16 Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/mep16_pop_seed${SEED}.pkl \
-        --agent-type pop --output eval_results/mep16_pop_selfplay_seed${SEED}.json
+        --agent-type pop --output reports/eval_results/mep16_pop_selfplay_seed${SEED}.json
 done
 echo "--- Eval: MEP-16 ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/mep16_seed${SEED}.pkl \
-        --output eval_results/mep16_ego_selfplay_seed${SEED}.json
+        --output reports/eval_results/mep16_ego_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -83,12 +83,12 @@ python train_mep.py --seeds 0,1,2,3,4 --ego-seeds 0,1,2 \
 echo "--- Eval: MEP-8 Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/mep8_pop_seed${SEED}.pkl \
-        --agent-type pop --output eval_results/mep8_pop_selfplay_seed${SEED}.json
+        --agent-type pop --output reports/eval_results/mep8_pop_selfplay_seed${SEED}.json
 done
 echo "--- Eval: MEP-8 ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/mep8_seed${SEED}.pkl \
-        --output eval_results/mep8_ego_selfplay_seed${SEED}.json
+        --output reports/eval_results/mep8_ego_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -103,7 +103,7 @@ echo "--- Eval: BCP ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/bcp_n2x1_hetero_seed${SEED}.pkl \
         --layouts cramped_room,asymm_advantages,coord_ring \
-        --output eval_results/bcp_ego_selfplay_seed${SEED}.json
+        --output reports/eval_results/bcp_ego_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -116,7 +116,7 @@ python train_fcp.py --seeds 0,1,2 \
 echo "--- Eval: FCP ego self-play ---"
 for SEED in 0 1 2; do
     python evaluate.py --mode self-play-ego --agent-path checkpoints/fcp_n2x1_hetero_seed${SEED}.pkl \
-        --output eval_results/fcp_ego_selfplay_seed${SEED}.json
+        --output reports/eval_results/fcp_ego_selfplay_seed${SEED}.json
 done
 python print_tables.py
 
@@ -142,23 +142,23 @@ for EGO_METHOD in sp mep16 mep8 bcp fcp; do
             python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/sp_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
-                --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_sp_s${P_SEED}.json
+                --output reports/eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_sp_s${P_SEED}.json
 
             python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/mep16_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
-                --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep16_s${P_SEED}.json
+                --output reports/eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep16_s${P_SEED}.json
 
             python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/mep8_pop_seed${P_SEED}.pkl --partner-type pop \
                 --layouts $LAYOUTS \
-                --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep8_s${P_SEED}.json
+                --output reports/eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_mep8_s${P_SEED}.json
 
             python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/bc_seed${P_SEED}.pkl --partner-type bc \
                 --bc-hidden-dim 64 --bc-num-layers 2 \
                 --layouts cramped_room,asymm_advantages,coord_ring \
-                --output eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_bc_s${P_SEED}.json
+                --output reports/eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_bc_s${P_SEED}.json
         done
     done
     python print_tables.py
@@ -172,4 +172,4 @@ python print_tables.py
 
 echo ""
 echo " All training and evaluation complete."
-echo " Results in eval_results/"
+echo " Results in reports/eval_results/"

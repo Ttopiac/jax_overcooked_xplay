@@ -1,11 +1,11 @@
-"""Print evaluation tables from JSON results in eval_results/."""
+"""Print evaluation tables from JSON results in reports/eval_results/."""
 
 import json
 import os
 import glob
 import numpy as np
 
-EVAL_DIR = "eval_results"
+EVAL_DIR = "reports/eval_results"
 LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 BCP_LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring"]
 
