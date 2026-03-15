@@ -234,7 +234,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
     num_ego = num_agents - num_unseen
     homo = config["xplay_mode"] == "homo"
 
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=True) for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
@@ -435,14 +435,14 @@ def main():
                         help="Comma-separated seeds for population training")
     parser.add_argument("--ego-seeds", type=str, default=None,
                         help="Comma-separated seeds for ego training (default: same as --seeds)")
-    parser.add_argument("--pop-timesteps", type=int, default=60_000_000)
+    parser.add_argument("--pop-timesteps", type=int, default=100_000_000)
     parser.add_argument("--num-agents", type=int, default=2)
     parser.add_argument("--num-unseen", type=int, default=1)
     parser.add_argument("--xplay-mode", type=str, default="hetero", choices=["hetero", "homo"])
-    parser.add_argument("--ego-timesteps", type=int, default=60_000_000)
-    parser.add_argument("--num-envs-per-layout", type=int, default=8)
-    parser.add_argument("--num-steps", type=int, default=128)
-    parser.add_argument("--epoch-updates", type=int, default=20,
+    parser.add_argument("--ego-timesteps", type=int, default=100_000_000)
+    parser.add_argument("--num-envs-per-layout", type=int, default=42)
+    parser.add_argument("--num-steps", type=int, default=500)
+    parser.add_argument("--epoch-updates", type=int, default=1,
                         help="PPO updates per agent selection round (~100K steps with 40 envs × 128 steps)")
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -452,14 +452,14 @@ def main():
     parser.add_argument("--ent-coef", type=float, default=0.01)
     parser.add_argument("--num-epochs", type=int, default=4)
     parser.add_argument("--minibatch-size", type=int, default=512)
-    parser.add_argument("--hidden-dim", type=int, default=64)
-    parser.add_argument("--num-layers", type=int, default=3)
+    parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--pop-size", type=int, default=16)
     parser.add_argument("--mep-alpha", type=float, default=0.01)
     parser.add_argument("--priority-alpha", type=float, default=3.0,
                         help="Prioritized sampling exponent for ego phase (MEP paper: 3.0)")
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
-    parser.add_argument("--reward-mode", type=str, default="shaped")
+    parser.add_argument("--reward-mode", type=str, default="originaler")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     setup_wandb_args(parser)
