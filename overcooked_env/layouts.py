@@ -13,6 +13,8 @@ cramped_room = {
     "agent_idx" : jnp.array([6, 8]),
     "all_walkable_idx" : jnp.array([6, 7, 8, 11, 12, 13]),
     "max_agents" : 6,
+    # Single connected region — no spawn constraint
+    "spawn_zones" : None,
     "goal_idx" : jnp.array([18]),
     "plate_pile_idx" : jnp.array([16]),
     "onion_pile_idx" : jnp.array([5,9]),
@@ -30,6 +32,9 @@ asymm_advantages = {
     "agent_idx" : jnp.array([29, 32]),
     "all_walkable_idx" : jnp.array([10, 16, 19, 20, 21, 23, 24, 25, 28, 29, 30, 32, 33, 34]),
     "max_agents" : 14,
+    # Two separated rooms — must have ≥1 agent in each
+    "spawn_zones" : [jnp.array([10, 19, 20, 21, 28, 29, 30]),   # left room
+                     jnp.array([16, 23, 24, 25, 32, 33, 34])],  # right room
     "goal_idx" : jnp.array([12,17]),
     "plate_pile_idx" : jnp.array([39,41]),
     "onion_pile_idx" : jnp.array([9,14]),
@@ -43,6 +48,7 @@ coord_ring = {
     "agent_idx" : jnp.array([7, 11]),
     "all_walkable_idx" : jnp.array([6, 7, 8, 11, 13, 16, 17, 18]),
     "max_agents" : 8,
+    "spawn_zones" : None,  # single connected region
     "goal_idx" : jnp.array([22]),
     "plate_pile_idx" : jnp.array([10]),
     "onion_pile_idx" : jnp.array([15,21]),
@@ -56,6 +62,9 @@ forced_coord = {
     "agent_idx" : jnp.array([11,8]),
     "all_walkable_idx" : jnp.array([6, 8, 11, 13, 16, 18]),
     "max_agents" : 6,
+    # Two separated corridors — must have ≥1 agent in each
+    "spawn_zones" : [jnp.array([6, 11, 16]),   # left corridor
+                     jnp.array([8, 13, 18])],   # right corridor
     "goal_idx" : jnp.array([23]),
     "onion_pile_idx" : jnp.array([5,10]),
     "plate_pile_idx" : jnp.array([15]),
@@ -103,6 +112,7 @@ def layout_grid_to_dict(grid):
 
     layout_dict["all_walkable_idx"] = jnp.array(walkable)
     layout_dict["max_agents"] = len(walkable)
+    layout_dict["spawn_zones"] = None  # single connected region for grid-defined layouts
 
     return FrozenDict(layout_dict)
 

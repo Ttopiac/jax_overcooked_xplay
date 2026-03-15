@@ -1,0 +1,10 @@
+{
+  "mode": "cross-play",
+  "results": {
+    "cramped_room": 240.0,
+    "asymm_advantages": 218.33333333333334,
+    "coord_ring": 180.0,
+    "forced_coord": 0.0,
+    "counter_circuit": 12.5
+  }
+}

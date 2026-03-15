@@ -81,9 +81,11 @@ class Overcooked(MultiAgentEnv):
             layout=FrozenDict(layouts["cramped_room"]),
             num_agents: int = 2,
             random_reset: bool = False,
+            random_start_pos: bool = False,
             max_steps: int = 400,
     ):
         super().__init__(num_agents=num_agents)
+        self.random_start_pos = random_start_pos
 
         self.height = layout["height"]
         self.width = layout["width"]
@@ -158,26 +160,50 @@ class Overcooked(MultiAgentEnv):
 
         # Reset agent positions
         key, subkey = jax.random.split(key)
-        agent_idx = jax.random.choice(subkey, all_pos, shape=(num_agents,),
-                                      p=(~occupied_mask.astype(jnp.bool_)).astype(jnp.float32), replace=False)
 
-        # Use layout-defined positions
-        # For N <= len(agent_idx): use first N default positions
-        # For N > len(agent_idx): use all_walkable_idx (first N walkable tiles)
-        default_agent_idx = layout.get("agent_idx", agent_idx)
+        # Default: fixed layout positions
+        default_agent_idx = layout.get("agent_idx")
         all_walkable = layout.get("all_walkable_idx", default_agent_idx)
 
-        # Select positions: prefer default positions, fill rest from walkable
         if num_agents <= default_agent_idx.shape[0]:
-            layout_agent_idx = default_agent_idx[:num_agents]
+            fixed_agent_idx = default_agent_idx[:num_agents]
         else:
-            # Use all defaults + additional from walkable
-            layout_agent_idx = all_walkable[:num_agents]
+            fixed_agent_idx = all_walkable[:num_agents]
 
-        agent_idx = random_reset * agent_idx + (1 - random_reset) * layout_agent_idx
+        if self.random_start_pos or random_reset:
+            # Random positions from walkable tiles
+            # For layouts with spawn zones: ensure ≥1 agent per zone
+            spawn_zones = layout.get("spawn_zones", None)
+            if spawn_zones is not None and len(spawn_zones) >= 2:
+                # Place one agent per zone first, then fill remaining randomly
+                placed = []
+                for zone in spawn_zones:
+                    key, zkey = jax.random.split(key)
+                    idx = jax.random.choice(zkey, zone, shape=())
+                    placed.append(idx)
+                # Remaining agents from all walkable (may overlap with zone picks)
+                n_remaining = num_agents - len(placed)
+                if n_remaining > 0:
+                    key, rkey = jax.random.split(key)
+                    remaining = jax.random.choice(rkey, all_walkable, shape=(n_remaining,), replace=False)
+                    agent_idx = jnp.concatenate([jnp.array(placed), remaining])
+                else:
+                    agent_idx = jnp.array(placed[:num_agents])
+            else:
+                # No zones — fully random from walkable
+                agent_idx = jax.random.choice(subkey, all_walkable, shape=(num_agents,), replace=False)
+        else:
+            agent_idx = fixed_agent_idx
+
+        # For full random_reset, use the random positions; for random_start_pos only, use them too
+        if random_reset:
+            # random_reset also randomizes pots/inventory (handled below)
+            pass
+
         agent_pos = jnp.array([agent_idx % w, agent_idx // w], dtype=jnp.uint32).transpose()
         occupied_mask = occupied_mask.at[agent_idx].set(1)
 
+        # Always randomize directions
         key, subkey = jax.random.split(key)
         agent_dir_idx = jax.random.choice(subkey, jnp.arange(len(DIR_TO_VEC), dtype=jnp.int32), shape=(num_agents,))
         agent_dir = DIR_TO_VEC.at[agent_dir_idx].get()
