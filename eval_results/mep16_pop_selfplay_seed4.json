@@ -1,0 +1,117 @@
+{
+  "mode": "self-play-pop",
+  "results": {
+    "Agent_0": {
+      "cramped_room": 100.83333333333333,
+      "asymm_advantages": 240.0,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_1": {
+      "cramped_room": 240.0,
+      "asymm_advantages": 260.0,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_2": {
+      "cramped_room": 191.45833333333334,
+      "asymm_advantages": 260.0,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_3": {
+      "cramped_room": 122.5,
+      "asymm_advantages": 260.0,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_4": {
+      "cramped_room": 175.0,
+      "asymm_advantages": 280.0,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_5": {
+      "cramped_room": 197.08333333333334,
+      "asymm_advantages": 254.58333333333334,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_6": {
+      "cramped_room": 103.125,
+      "asymm_advantages": 255.0,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_7": {
+      "cramped_room": 240.0,
+      "asymm_advantages": 260.0,
+      "coord_ring": 0.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_8": {
+      "cramped_room": 175.0,
+      "asymm_advantages": 105.625,
+      "coord_ring": 160.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_9": {
+      "cramped_room": 200.0,
+      "asymm_advantages": 260.0,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_10": {
+      "cramped_room": 162.70833333333334,
+      "asymm_advantages": 248.54166666666666,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_11": {
+      "cramped_room": 176.45833333333334,
+      "asymm_advantages": 269.5833333333333,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_12": {
+      "cramped_room": 240.0,
+      "asymm_advantages": 260.0,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_13": {
+      "cramped_room": 235.83333333333334,
+      "asymm_advantages": 260.0,
+      "coord_ring": 200.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_14": {
+      "cramped_room": 176.45833333333334,
+      "asymm_advantages": 240.0,
+      "coord_ring": 118.125,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    },
+    "Agent_15": {
+      "cramped_room": 220.0,
+      "asymm_advantages": 260.0,
+      "coord_ring": 180.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    }
+  }
+}

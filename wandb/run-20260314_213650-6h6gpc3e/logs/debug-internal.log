@@ -1,0 +1,19 @@
+{"time":"2026-03-14T21:36:50.851840553-06:00","level":"INFO","msg":"wandb-core"}
+{"time":"2026-03-14T21:36:50.852123884-06:00","level":"INFO","msg":"stream: starting","core version":"0.25.1"}
+{"time":"2026-03-14T21:36:51.184616005-06:00","level":"INFO","msg":"stream: created new stream","id":"6h6gpc3e"}
+{"time":"2026-03-14T21:36:51.184686891-06:00","level":"INFO","msg":"stream: started"}
+{"time":"2026-03-14T21:36:51.184701593-06:00","level":"INFO","msg":"handler: started"}
+{"time":"2026-03-14T21:36:51.184713778-06:00","level":"INFO","msg":"sender: started"}
+{"time":"2026-03-14T21:36:51.184715604-06:00","level":"INFO","msg":"writer: started","stream_id":"6h6gpc3e"}
+{"time":"2026-03-14T21:36:51.469598376-06:00","level":"INFO","msg":"filestream: sending request","total_files":1}
+{"time":"2026-03-14T21:36:51.651348202-06:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-14T21:36:52.277548342-06:00","level":"INFO","msg":"flowcontrol: backed up, offloading to disk","recordNumber":41373}
+{"time":"2026-03-14T21:36:52.278089394-06:00","level":"INFO","msg":"flowcontrol: unblocked","totalOffloaded":70}
+{"time":"2026-03-14T21:36:54.004166969-06:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-03-14T21:36:54.015387319-06:00","level":"INFO","msg":"filestream: sending request","total_files":2,"history_offset":0,"history_lines":35154,"uploaded_len":4,"complete":true,"exit_code":0}
+{"time":"2026-03-14T21:36:56.563064304-06:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-14T21:36:56.563708506-06:00","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2026-03-14T21:36:56.56525775-06:00","level":"INFO","msg":"stream: closing"}
+{"time":"2026-03-14T21:36:56.56526186-06:00","level":"INFO","msg":"handler: closed"}
+{"time":"2026-03-14T21:36:56.565293313-06:00","level":"INFO","msg":"sender: closed"}
+{"time":"2026-03-14T21:36:56.565295631-06:00","level":"INFO","msg":"stream: closed"}

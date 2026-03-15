@@ -1,0 +1,1 @@
+{"_step":35153,"ego_time_s":1436.2371637821198,"ego/total_loss":0.9562042355537415,"final_ego_reward":0.526562511920929,"_wandb":{"runtime":2},"update":11717,"_timestamp":1.773542052058734e+09,"ego/mean_reward":0.526562511920929,"_runtime":2,"ego/mean_sparse_reward":0.37890625}

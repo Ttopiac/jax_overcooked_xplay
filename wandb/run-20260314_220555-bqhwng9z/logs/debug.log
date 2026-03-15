@@ -1,0 +1,21 @@
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /home/nathan/jax_overcooked_xplay/wandb/run-20260314_220555-bqhwng9z/logs/debug.log
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /home/nathan/jax_overcooked_xplay/wandb/run-20260314_220555-bqhwng9z/logs/debug-internal.log
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:init():844] calling init triggers
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'num_agents': 2, 'num_unseen': 1, 'xplay_mode': 'hetero', 'num_envs_per_layout': 8, 'num_steps': 128, 'num_updates': 19531, 'lr': 0.0003, 'gamma': 0.99, 'gae_lambda': 0.95, 'clip_eps': 0.2, 'vf_coef': 0.3, 'ent_coef': 0.01, 'num_epochs': 4, 'minibatch_size': 512, 'hidden_dims': (64, 64, 64), 'reward_mode': 'shaped', 'reward_shaping_factor': 1.0, 'reward_shaping_horizon': inf, 'bc_anneal_horizon': 8000, 'seed': 1, 'method': 'BCP', '_wandb': {}}
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:init():892] starting backend
+2026-03-14 22:05:55,822 INFO    MainThread:264134 [wandb_init.py:init():895] sending inform_init request
+2026-03-14 22:05:55,823 INFO    MainThread:264134 [wandb_init.py:init():903] backend started and connected
+2026-03-14 22:05:55,823 INFO    MainThread:264134 [wandb_init.py:init():973] updated telemetry
+2026-03-14 22:05:55,825 INFO    MainThread:264134 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-03-14 22:05:56,296 INFO    MainThread:264134 [wandb_init.py:init():1042] starting run threads in backend
+2026-03-14 22:05:56,382 INFO    MainThread:264134 [wandb_run.py:_console_start():2524] atexit reg
+2026-03-14 22:05:56,382 INFO    MainThread:264134 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-03-14 22:05:56,382 INFO    MainThread:264134 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-03-14 22:05:56,382 INFO    MainThread:264134 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-03-14 22:05:56,383 INFO    MainThread:264134 [wandb_init.py:init():1082] run started, returning control to user process
+2026-03-14 22:06:00,850 INFO    MainThread:264134 [wandb_run.py:_finish():2291] finishing run chli4608/overcooked-xplay/bqhwng9z
+2026-03-14 22:06:00,850 INFO    MainThread:264134 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-03-14 22:06:00,850 INFO    MainThread:264134 [wandb_run.py:_restore():2472] restore
+2026-03-14 22:06:00,850 INFO    MainThread:264134 [wandb_run.py:_restore():2478] restore done
+2026-03-14 22:06:05,838 INFO    MainThread:264134 [wandb_run.py:_footer_sync_info():3868] logging synced files

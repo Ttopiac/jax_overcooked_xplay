@@ -1,0 +1,10 @@
+{
+  "mode": "self-play-ego",
+  "results": {
+    "cramped_room": 200.0,
+    "asymm_advantages": 260.0,
+    "coord_ring": 200.0,
+    "forced_coord": 200.0,
+    "counter_circuit": 140.0
+  }
+}

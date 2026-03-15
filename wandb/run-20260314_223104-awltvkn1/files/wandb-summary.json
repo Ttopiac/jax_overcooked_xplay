@@ -1,0 +1,1 @@
+{"final_sparse":0.35546875,"_runtime":2,"final_reward":0.4966796934604645,"_wandb":{"runtime":2},"_timestamp":1.7735490666542306e+09,"train/mean_sparse_reward":0.35546875,"_step":35153,"train/mean_reward":0.4966796934604645,"update":11717,"train/total_loss":1.9046953916549683,"train_time_s":1440.0315573215485}

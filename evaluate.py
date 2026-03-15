@@ -36,22 +36,24 @@ BC_TO_JAXMARL = {
 }
 
 
-def evaluate_episode(env, network, params_a, params_b, encoder, key, num_envs=32):
+def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key, num_envs=32):
     """Run one batch of episodes and return mean sparse reward.
 
     Both agents use deterministic actions (argmax).
+    Supports different network architectures for each agent (e.g. ego 3×64 vs BC 2×64).
 
     Args:
         env: Overcooked env (2 agents)
-        network: ActorCritic network
+        network_a: ActorCritic network for agent_0
         params_a: agent_0 params
+        network_b: ActorCritic network for agent_1
         params_b: agent_1 params
         encoder: ObsEncoder
         key: random key
         num_envs: parallel episodes
 
     Returns:
-        mean_sparse_reward: float, mean total sparse reward per episode
+        mean_sparse_reward: jax array scalar
     """
     keys = jax.random.split(key, num_envs)
     obs, state = jax.vmap(env.reset)(keys)
@@ -65,8 +67,8 @@ def evaluate_episode(env, network, params_a, params_b, encoder, key, num_envs=32
         obs_0 = encoder.encode(obs, state, 0, num_envs)
         obs_1 = encoder.encode(obs, state, 1, num_envs)
 
-        pi_0, _ = network.apply(params_a, obs_0)
-        pi_1, _ = network.apply(params_b, obs_1)
+        pi_0, _ = network_a.apply(params_a, obs_0)
+        pi_1, _ = network_b.apply(params_b, obs_1)
 
         # Deterministic: argmax
         a0 = pi_0.logits.argmax(axis=-1)
@@ -108,7 +110,7 @@ def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_
 
         @jax.jit
         def eval_fn(key, _env=env):
-            return evaluate_episode(_env, network, params, params, encoder, key, num_envs)
+            return evaluate_episode(_env, network, params, network, params, encoder, key, num_envs)
 
         batch_rewards = []
         for b in range(num_batches):
@@ -123,7 +125,7 @@ def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_
 
 def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner,
                         encoder, layouts, num_episodes=100, num_envs=32):
-    """Evaluate ego agent paired with a different partner."""
+    """Evaluate ego agent paired with a different partner. Supports different architectures."""
     results = {}
     num_batches = max(1, num_episodes // num_envs)
 
@@ -132,7 +134,7 @@ def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner
 
         @jax.jit
         def eval_fn(key, _env=env):
-            return evaluate_episode(_env, network_ego, params_ego, params_partner, encoder, key, num_envs)
+            return evaluate_episode(_env, network_ego, params_ego, network_partner, params_partner, encoder, key, num_envs)
 
         batch_rewards = []
         for b in range(num_batches):

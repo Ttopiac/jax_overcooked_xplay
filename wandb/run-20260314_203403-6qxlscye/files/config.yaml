@@ -1,0 +1,127 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            vxdy787m1iqdzw7bd78jxs10iw4wubh2:
+                args:
+                    - --seeds
+                    - 0,1,2,3,4
+                    - --ego-seeds
+                    - 0,1,2
+                    - --pop-timesteps
+                    - "60000000"
+                    - --ego-timesteps
+                    - "60000000"
+                    - --pop-size
+                    - "16"
+                    - --epoch-updates
+                    - "20"
+                    - --num-agents
+                    - "2"
+                    - --num-unseen
+                    - "1"
+                    - --wandb
+                codePath: train_mep.py
+                codePathLocal: train_mep.py
+                cpu_count: 24
+                cpu_count_logical: 32
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "1966736678912"
+                        used: "727742423040"
+                email: ttopiac@gmail.com
+                executable: /home/nathan/anaconda3/bin/python
+                git:
+                    commit: 555e14a509388d73e09e71509b37a0013219bdb7
+                gpu: NVIDIA GeForce RTX 3090
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 10496
+                      memoryTotal: "25769803776"
+                      name: NVIDIA GeForce RTX 3090
+                      uuid: GPU-9f9f5433-5d4f-58ce-f6af-ab061a9108ee
+                host: nathan-Z790-AORUS-ELITE-AX
+                memory:
+                    total: "67178528768"
+                os: Linux-6.17.0-14-generic-x86_64-with-glibc2.39
+                program: /home/nathan/jax_overcooked_xplay/train_mep.py
+                python: CPython 3.12.4
+                root: /home/nathan/jax_overcooked_xplay
+                startedAt: "2026-03-15T02:34:03.966361Z"
+                writerId: vxdy787m1iqdzw7bd78jxs10iw4wubh2
+        m: []
+        python_version: 3.12.4
+        t:
+            "1":
+                - 12
+                - 45
+            "2":
+                - 12
+                - 45
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 62
+            "4": 3.12.4
+            "5": 0.25.1
+            "10":
+                - 20
+            "12": 0.25.1
+            "13": linux-x86_64
+clip_eps:
+    value: 0.2
+ego_num_updates:
+    value: 11718
+ent_coef:
+    value: 0.01
+epoch_updates:
+    value: 20
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.99
+hidden_dims:
+    value:
+        - 64
+        - 64
+        - 64
+lr:
+    value: 0.0003
+mep_alpha:
+    value: 0.01
+method:
+    value: MEP16_EGO
+minibatch_size:
+    value: 512
+num_agents:
+    value: 2
+num_envs_per_layout:
+    value: 8
+num_epochs:
+    value: 4
+num_steps:
+    value: 128
+num_unseen:
+    value: 1
+num_updates:
+    value: 11718
+pop_size:
+    value: 16
+priority_alpha:
+    value: 3
+reward_mode:
+    value: shaped
+reward_shaping_factor:
+    value: 1
+reward_shaping_horizon:
+    value: .inf
+seed:
+    value: 0
+vf_coef:
+    value: 0.3
+xplay_mode:
+    value: hetero
