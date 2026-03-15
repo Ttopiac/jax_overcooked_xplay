@@ -234,7 +234,7 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
     num_ego = num_agents - num_unseen
     homo = config["xplay_mode"] == "homo"
 
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False) for name in LAYOUT_NAMES]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=config.get("random_start_pos", False)) for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * len(LAYOUT_NAMES)
@@ -404,6 +404,7 @@ def get_config(args):
 
     return {
         "num_agents": args.num_agents,
+        "random_start_pos": getattr(args, "random_start_pos", False),
         "num_unseen": args.num_unseen,
         "xplay_mode": args.xplay_mode,
         "num_envs_per_layout": n_env_l,
@@ -437,6 +438,8 @@ def main():
                         help="Comma-separated seeds for ego training (default: same as --seeds)")
     parser.add_argument("--pop-timesteps", type=int, default=100_000_000)
     parser.add_argument("--num-agents", type=int, default=2)
+    parser.add_argument("--random-start-pos", action="store_true", default=False,
+                        help="Randomize agent starting positions (default: fixed layout positions)")
     parser.add_argument("--num-unseen", type=int, default=1)
     parser.add_argument("--xplay-mode", type=str, default="hetero", choices=["hetero", "homo"])
     parser.add_argument("--ego-timesteps", type=int, default=100_000_000)

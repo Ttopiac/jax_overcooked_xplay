@@ -27,7 +27,7 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 def make_parallel_sp_train(config):
     num_agents = config["num_agents"]
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=config.get("random_start_pos", False))
             for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     action_dim = envs[0].action_space(agent_names[0]).n
@@ -193,6 +193,7 @@ def get_config(args):
 
     return {
         "num_agents": args.num_agents,
+        "random_start_pos": getattr(args, "random_start_pos", False),
         "num_envs_per_layout": n_env_l,
         "num_steps": num_steps,
         "num_updates": num_updates,
@@ -219,6 +220,8 @@ def main():
                         help="Comma-separated seeds, e.g. '0,1,2,3,4'")
     parser.add_argument("--total-timesteps", type=int, default=100_000_000)
     parser.add_argument("--num-agents", type=int, default=2)
+    parser.add_argument("--random-start-pos", action="store_true", default=False,
+                        help="Randomize agent starting positions (default: fixed layout positions)")
     parser.add_argument("--num-envs-per-layout", type=int, default=42)
     parser.add_argument("--num-steps", type=int, default=500)
     parser.add_argument("--lr", type=float, default=3e-4)

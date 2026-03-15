@@ -31,7 +31,7 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
     num_ego = num_agents - num_unseen
     homo = config["xplay_mode"] == "homo"
 
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=config.get("random_start_pos", False))
             for name in BCP_JAXMARL_LAYOUTS]
     agent_names = envs[0].agents
     n_layouts = len(BCP_JAXMARL_LAYOUTS)
@@ -189,6 +189,7 @@ def get_config(args):
 
     return {
         "num_agents": args.num_agents,
+        "random_start_pos": getattr(args, "random_start_pos", False),
         "num_unseen": args.num_unseen,
         "xplay_mode": args.xplay_mode,
         "num_envs_per_layout": n_env_l,
@@ -212,6 +213,8 @@ def main():
     parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--total-timesteps", type=int, default=100_000_000)
     parser.add_argument("--num-agents", type=int, default=2)
+    parser.add_argument("--random-start-pos", action="store_true", default=False,
+                        help="Randomize agent starting positions (default: fixed layout positions)")
     parser.add_argument("--num-unseen", type=int, default=1)
     parser.add_argument("--xplay-mode", type=str, default="hetero", choices=["hetero", "homo"])
     parser.add_argument("--num-envs-per-layout", type=int, default=42)
