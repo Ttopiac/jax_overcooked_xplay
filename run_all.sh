@@ -32,7 +32,7 @@ python print_tables.py
 echo ""
 echo "=== Step 1: SP Population (80 agents) ==="
 python train_sp_population.py --seeds 0,1,2,3,4 \
-    --total-timesteps 60000000 --pop-size 16 --num-agents 2 --wandb
+    --total-timesteps 100000000 --pop-size 16 --num-agents 2 --wandb
 
 echo "--- Eval: SP Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
@@ -45,7 +45,7 @@ python print_tables.py
 echo ""
 echo "=== Step 2: SP Ego ==="
 python train_sp.py --seeds 0,1,2 \
-    --total-timesteps 120000000 --num-agents 2 --wandb
+    --total-timesteps 100000000 --num-agents 2 --wandb
 
 echo "--- Eval: SP ego self-play ---"
 for SEED in 0 1 2; do
@@ -58,8 +58,8 @@ python print_tables.py
 echo ""
 echo "=== Step 3: MEP-16 ==="
 python train_mep.py --seeds 0,1,2,3,4 --ego-seeds 0,1,2 \
-    --pop-timesteps 60000000 --ego-timesteps 60000000 \
-    --pop-size 16 --epoch-updates 20 --num-agents 2 --num-unseen 1 --wandb
+    --pop-timesteps 100000000 --ego-timesteps 100000000 \
+    --pop-size 16 --epoch-updates 1 --num-agents 2 --num-unseen 1 --wandb
 
 echo "--- Eval: MEP-16 Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
@@ -77,8 +77,8 @@ python print_tables.py
 echo ""
 echo "=== Step 4: MEP-8 ==="
 python train_mep.py --seeds 0,1,2,3,4 --ego-seeds 0,1,2 \
-    --pop-timesteps 60000000 --ego-timesteps 60000000 \
-    --pop-size 8 --epoch-updates 20 --num-agents 2 --num-unseen 1 --wandb
+    --pop-timesteps 100000000 --ego-timesteps 100000000 \
+    --pop-size 8 --epoch-updates 1 --num-agents 2 --num-unseen 1 --wandb
 
 echo "--- Eval: MEP-8 Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
@@ -96,7 +96,7 @@ python print_tables.py
 echo ""
 echo "=== Step 5: BCP ==="
 python train_bcp.py --seeds 0,1,2 \
-    --total-timesteps 60000000 --num-agents 2 --num-unseen 1 \
+    --total-timesteps 100000000 --num-agents 2 --num-unseen 1 \
     --bc-anneal-horizon 8000 --wandb
 
 echo "--- Eval: BCP ego self-play ---"
@@ -111,7 +111,7 @@ python print_tables.py
 echo ""
 echo "=== Step 6: FCP ==="
 python train_fcp.py --seeds 0,1,2 \
-    --total-timesteps 60000000 --num-agents 2 --num-unseen 1 --wandb
+    --total-timesteps 100000000 --num-agents 2 --num-unseen 1 --wandb
 
 echo "--- Eval: FCP ego self-play ---"
 for SEED in 0 1 2; do
