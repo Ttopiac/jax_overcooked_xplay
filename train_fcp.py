@@ -24,7 +24,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
-from nxplay import select_partners, shuffle_agent_positions
+from nxplay import select_partners, shuffle_agent_slots
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -49,7 +49,7 @@ def make_fcp_train(config, network, encoder, reward_shaper):
     num_ego = num_agents - num_unseen
     homo = config["xplay_mode"] == "homo"
 
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=True)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
             for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     n_env_l = config["num_envs_per_layout"]
@@ -89,7 +89,7 @@ def make_fcp_train(config, network, encoder, reward_shaper):
 
             # Shuffle agent positions for diversity
             all_env_states_shuffled = tuple(
-                jax.vmap(lambda s, k: shuffle_agent_positions(k, s, num_agents))(
+                jax.vmap(lambda s, k: shuffle_agent_slots(k, s, num_agents))(
                     all_env_states[i],
                     jax.random.split(shuffle_rng, n_env_l)
                 ) if num_agents > 1 else all_env_states[i]

@@ -27,7 +27,7 @@ LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord"
 
 def make_parallel_sp_train(config):
     num_agents = config["num_agents"]
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=True)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
             for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     action_dim = envs[0].action_space(agent_names[0]).n

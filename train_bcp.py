@@ -19,7 +19,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
-from nxplay import select_partners, shuffle_agent_positions
+from nxplay import select_partners, shuffle_agent_slots
 from train_bc import BC_HIDDEN_DIMS, BC_LAYOUTS
 
 BCP_JAXMARL_LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring"]
@@ -31,7 +31,7 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
     num_ego = num_agents - num_unseen
     homo = config["xplay_mode"] == "homo"
 
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=True)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
             for name in BCP_JAXMARL_LAYOUTS]
     agent_names = envs[0].agents
     n_layouts = len(BCP_JAXMARL_LAYOUTS)
@@ -69,7 +69,7 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
 
             # Shuffle positions
             all_env_states_s = tuple(
-                jax.vmap(lambda s, k: shuffle_agent_positions(k, s, num_agents))(
+                jax.vmap(lambda s, k: shuffle_agent_slots(k, s, num_agents))(
                     all_env_states[i], jax.random.split(shuffle_rng, n_env_l)
                 ) for i in range(len(envs))
             )

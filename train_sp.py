@@ -18,13 +18,14 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
+from nxplay import shuffle_agent_slots
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
 
 def make_train(config):
     num_agents = config["num_agents"]
-    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=True)
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=False)
             for name in LAYOUT_NAMES]
     agent_names = envs[0].agents
     action_dim = envs[0].action_space(agent_names[0]).n
@@ -56,7 +57,15 @@ def make_train(config):
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng = runner_state
 
-            all_agent_traj = []  # list of per-layout stacked transitions
+            # Shuffle agent slots (multiHRI-style: randomize ego perspective)
+            rng, shuffle_rng = jax.random.split(rng)
+            all_env_states = tuple(
+                jax.vmap(lambda s, k: shuffle_agent_slots(k, s, num_agents))(
+                    all_env_states[i], jax.random.split(shuffle_rng, n_env_l)
+                ) for i in range(len(envs))
+            )
+
+            all_agent_traj = []
             all_sparse = []
             new_states = []
             new_obs_list = []

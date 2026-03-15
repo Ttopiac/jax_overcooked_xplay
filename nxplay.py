@@ -95,19 +95,45 @@ def compute_actions(network, ego_params, partner_params, obs_per_agent,
     return actions, ego_log_probs, ego_values
 
 
-def shuffle_agent_positions(rng, state, num_agents):
-    """Shuffle agent positions in state for position randomization.
+def shuffle_agent_slots(rng, state, num_agents):
+    """Shuffle which agent slot maps to which physical position (multiHRI-style).
 
-    This ensures ego/clone agents don't always play from the same
-    physical positions. Called at env reset or start of each update.
+    multiHRI randomizes p_idx each reset — the ego randomly plays from any
+    physical starting position. This achieves the same effect by permuting
+    the agent slot assignments in the state.
+
+    Called at start of each PPO update. Physical positions stay as defined
+    by the layout, but which slot (ego/clone/partner) is at which position
+    gets randomized.
 
     Args:
         rng: random key
-        state: env State with agent_pos, agent_dir, agent_dir_idx, agent_inv
+        state: env State
+        num_agents: N
 
     Returns:
-        state with shuffled agent assignments
+        state with shuffled slot-to-position mapping
     """
+    perm = jax.random.permutation(rng, num_agents)
+    return state.replace(
+        agent_pos=state.agent_pos[perm],
+        agent_dir=state.agent_dir[perm],
+        agent_dir_idx=state.agent_dir_idx[perm],
+        agent_inv=state.agent_inv[perm],
+    )
+
+
+def shuffle_start_positions(rng, state, num_agents):
+    """Randomize physical starting positions across walkable tiles.
+
+    Unlike shuffle_agent_slots which just permutes existing positions,
+    this actually moves agents to new random positions. Requires the
+    env to be created with random_start_pos=True.
+
+    This is our custom extension beyond multiHRI.
+    """
+    # This is handled by env.reset with random_start_pos=True
+    # This function is for in-training position randomization
     perm = jax.random.permutation(rng, num_agents)
     return state.replace(
         agent_pos=state.agent_pos[perm],
