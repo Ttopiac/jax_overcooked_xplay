@@ -298,8 +298,9 @@ class Overcooked(MultiAgentEnv):
 
         # Per-agent position layers: (num_agents, H, W)
         agent_pos_layers = jnp.zeros((num_agents, height, width), dtype=jnp.uint8)
+        pos = state.agent_pos.astype(jnp.int32)
         for k in range(num_agents):
-            agent_pos_layers = agent_pos_layers.at[k, state.agent_pos[k, 1], state.agent_pos[k, 0]].set(1)
+            agent_pos_layers = agent_pos_layers.at[k, pos[k, 1], pos[k, 0]].set(1)
 
         # Agent inventory overlay on maze_map for obs
         agent_inv_items = jnp.expand_dims(state.agent_inv, (1, 2)) * agent_pos_layers
@@ -333,8 +334,9 @@ class Overcooked(MultiAgentEnv):
         # Per-agent direction layers: (num_agents, 4, H, W)
         # For each agent, 4 direction channels (one-hot)
         all_dir_layers = jnp.zeros((num_agents, 4, height, width), dtype=jnp.uint8)
+        dir_idx = state.agent_dir_idx.astype(jnp.int32)
         for k in range(num_agents):
-            all_dir_layers = all_dir_layers.at[k, state.agent_dir_idx[k], :, :].set(agent_pos_layers[k])
+            all_dir_layers = all_dir_layers.at[k, dir_idx[k], :, :].set(agent_pos_layers[k])
 
         # Build per-agent obs
         obs_dict = {}
@@ -347,14 +349,14 @@ class Overcooked(MultiAgentEnv):
             # Channel 1: all other agents' positions (overlaid)
             others_mask = jnp.ones(num_agents, dtype=jnp.bool_).at[i].set(False)
             teammates_pos = (agent_pos_layers * others_mask[:, None, None]).sum(axis=0)
-            obs = obs.at[1].set(jnp.minimum(teammates_pos, 1))  # clip to 0/1
+            obs = obs.at[1].set(jnp.minimum(teammates_pos, 1).astype(jnp.uint8))
 
             # Channels 2-5: ego orientation
             obs = obs.at[2:6].set(all_dir_layers[i])
 
             # Channels 6-9: all other agents' orientations (overlaid)
             teammates_dir = (all_dir_layers * others_mask[:, None, None, None]).sum(axis=0)
-            obs = obs.at[6:10].set(jnp.minimum(teammates_dir, 1))
+            obs = obs.at[6:10].set(jnp.minimum(teammates_dir, 1).astype(jnp.uint8))
 
             # Channels 10-25: environment layers
             obs = obs.at[10:].set(env_layers)
@@ -457,6 +459,8 @@ class Overcooked(MultiAgentEnv):
         agent_x, agent_y, agent_x_prev, agent_y_prev, agent_vec = vec_update(
             agent_dir_idx, agent_pos, agent_pos_prev, jnp.arange(num_agents)
         )
+        agent_x, agent_y = agent_x.astype(jnp.int32), agent_y.astype(jnp.int32)
+        agent_x_prev, agent_y_prev = agent_x_prev.astype(jnp.int32), agent_y_prev.astype(jnp.int32)
         empty = jnp.array([OBJECT_TO_INDEX['empty'], 0, 0], dtype=jnp.uint8)
 
         height = self.obs_shape[1]
@@ -473,8 +477,8 @@ class Overcooked(MultiAgentEnv):
             pot_status = is_cooking * not_done * (pot_status - 1) + (~is_cooking) * pot_status
             return pot.at[-1].set(pot_status)
 
-        pot_x = state.pot_pos[:, 0]
-        pot_y = state.pot_pos[:, 1]
+        pot_x = state.pot_pos[:, 0].astype(jnp.int32)
+        pot_y = state.pot_pos[:, 1].astype(jnp.int32)
         pots = maze_map.at[padding + pot_y, padding + pot_x].get()
         pots = jax.vmap(_cook_pots, in_axes=0)(pots)
         maze_map = maze_map.at[padding + pot_y, padding + pot_x, :].set(pots)
@@ -499,7 +503,7 @@ class Overcooked(MultiAgentEnv):
             inventory_all: chex.Array,
             player_idx: int):
         """Process interact action for one agent. Unchanged from original."""
-        fwd_pos = fwd_pos_all[player_idx]
+        fwd_pos = fwd_pos_all[player_idx].astype(jnp.int32)
         inventory = inventory_all[player_idx]
         shaped_reward = 0.
 

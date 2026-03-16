@@ -102,7 +102,7 @@ def make_overcooked_map(
 		return agent_x, agent_y, agent
 
 	agent_x_vec, agent_y_vec, agent_vec = jax.vmap(_get_agent_updates, in_axes=(0,0,0))(agent_dir_idx, agent_pos, jnp.arange(num_agents))
-	maze_map = maze_map.at[agent_y_vec,agent_x_vec,:].set(agent_vec)
+	maze_map = maze_map.at[agent_y_vec.astype(jnp.int32),agent_x_vec.astype(jnp.int32),:].set(agent_vec)
 
 	# Add goals
 	goal = jnp.array([OBJECT_TO_INDEX['goal'], COLOR_TO_INDEX['green'], 0], dtype=jnp.uint8)

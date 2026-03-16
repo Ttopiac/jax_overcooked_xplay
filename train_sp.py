@@ -151,10 +151,10 @@ def make_train(config):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
-            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
+            sparse_all = jnp.concatenate(all_sparse, axis=1)  # (steps, envs)
             metrics = {
-                "mean_reward": jnp.mean(traj_batch.reward),
-                "mean_sparse_reward": mean_sparse,
+                "mean_reward": jnp.mean(traj_batch.reward.sum(axis=0)),
+                "mean_sparse_reward": jnp.mean(sparse_all.sum(axis=0)),
                 "total_loss": loss_info["total_loss"],
             }
             return (train_state, all_env_states, all_obs, rng), metrics

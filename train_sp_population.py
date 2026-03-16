@@ -151,8 +151,9 @@ def make_parallel_sp_train(config):
             )
 
             # Checkpoint logic
-            mean_reward = jnp.mean(traj_batch.reward)
-            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
+            mean_reward = jnp.mean(traj_batch.reward.sum(axis=0))
+            sparse_all = jnp.concatenate(all_sparse, axis=1)
+            mean_sparse = jnp.mean(sparse_all.sum(axis=0))
             ck_idx = jnp.clip(update_idx // ck_interval, 0, num_ckpts - 1)
             is_boundary = (update_idx % ck_interval == 0)
 

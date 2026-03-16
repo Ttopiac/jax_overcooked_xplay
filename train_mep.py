@@ -195,7 +195,7 @@ def make_mep_pop_train(config):
                     ego_ts, flat_batch, flat_adv, flat_ret, config, update_rng
                 )
 
-                return (ego_ts, all_env_states, all_obs, rng), jnp.mean(traj_batch.reward)
+                return (ego_ts, all_env_states, all_obs, rng), jnp.mean(traj_batch.reward.sum(axis=0))
 
             inner_carry = (ego_train_state, all_env_states, all_obs, rng)
             inner_carry, round_rewards = jax.lax.scan(
@@ -375,14 +375,18 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
             rng, update_rng = jax.random.split(rng)
             train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
 
-            mean_reward = jnp.mean(traj_batch.reward)
+            mean_reward_per_step = jnp.mean(traj_batch.reward)
             ema_alpha = 0.1
             partner_rewards = partner_rewards.at[partner_idx].set(
-                (1 - ema_alpha) * partner_rewards[partner_idx] + ema_alpha * mean_reward
+                (1 - ema_alpha) * partner_rewards[partner_idx] + ema_alpha * mean_reward_per_step
             )
 
-            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
-            metrics = {"mean_reward": mean_reward, "mean_sparse_reward": mean_sparse, "total_loss": loss_info["total_loss"]}
+            sparse_all = jnp.concatenate(all_sparse, axis=1)
+            metrics = {
+                "mean_reward": jnp.mean(traj_batch.reward.sum(axis=0)),
+                "mean_sparse_reward": jnp.mean(sparse_all.sum(axis=0)),
+                "total_loss": loss_info["total_loss"],
+            }
             return (train_state, all_env_states, all_obs, rng, partner_rewards), metrics
 
         runner_state = (train_state, all_env_states, all_obs, rng, partner_rewards)

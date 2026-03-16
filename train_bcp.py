@@ -161,10 +161,10 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
             rng, update_rng = jax.random.split(rng)
             train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
 
-            mean_sparse = jnp.mean(jnp.concatenate(all_sparse, axis=1))
+            sparse_all = jnp.concatenate(all_sparse, axis=1)
             metrics = {
-                "mean_reward": jnp.mean(traj_batch.reward),
-                "mean_sparse_reward": mean_sparse,
+                "mean_reward": jnp.mean(traj_batch.reward.sum(axis=0)),
+                "mean_sparse_reward": jnp.mean(sparse_all.sum(axis=0)),
                 "total_loss": loss_info["total_loss"],
                 "bc_factor": bc_factor,
             }
