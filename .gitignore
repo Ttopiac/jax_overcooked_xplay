@@ -1,0 +1,8 @@
+checkpoints/*.pkl
+reports/eval_results/*.json
+reports/run2_log.txt
+run1_backup/
+__pycache__/
+*.pyc
+wandb/
+nohup.out

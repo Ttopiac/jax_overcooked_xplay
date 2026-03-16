@@ -6,6 +6,7 @@ Saves checkpoints at regular intervals for use by BCP and FCP.
 """
 
 import argparse
+import gc
 import os
 import pickle
 import time
@@ -236,6 +237,8 @@ def main():
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--pop-size", type=int, default=16)
     parser.add_argument("--num-checkpoints", type=int, default=35)
+    parser.add_argument("--batch-size", type=int, default=8,
+                        help="Number of agents to train in parallel per GPU batch")
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full"])
     parser.add_argument("--reward-mode", type=str, default="originaler",
@@ -249,14 +252,16 @@ def main():
     config = get_config(args)
     pop_size = args.pop_size
     total_agents = len(seeds) * pop_size
+    batch_size = min(args.batch_size, total_agents)
+    num_batches = (total_agents + batch_size - 1) // batch_size
 
     print(
         f"[SP-POP] seeds={seeds} pop_size={pop_size} total_agents={total_agents} "
         f"updates={config['num_updates']} timesteps={args.total_timesteps/1e6:.0f}M "
-        f"(all {total_agents} agents in parallel via vmap)"
+        f"(batch_size={batch_size}, {num_batches} batches)"
     )
 
-    # Flatten all seeds × pop_size into one vmap call
+    # Flatten all seeds × pop_size into one array of RNGs
     train_fn = make_parallel_sp_train(config)
     all_rngs = []
     for seed in seeds:
@@ -264,30 +269,60 @@ def main():
         all_rngs.append(jax.random.split(base_rng, pop_size))
     all_rngs = jnp.concatenate(all_rngs)  # (total_agents,)
 
+    # Train in batches to fit in VRAM
+    all_results = []
     t0 = time.time()
-    result = train_fn(all_rngs)
-    jax.block_until_ready(result["final_params"])
+    for batch_idx in range(num_batches):
+        b_start = batch_idx * batch_size
+        b_end = min(b_start + batch_size, total_agents)
+        actual_bs = b_end - b_start
+        batch_rngs = all_rngs[b_start:b_end]
+
+        print(f"  Batch {batch_idx+1}/{num_batches}: agents {b_start}-{b_end-1} "
+              f"({actual_bs} agents)")
+
+        batch_result = train_fn(batch_rngs)
+        # Move results to CPU and explicitly free GPU memory
+        batch_result_cpu = jax.device_get(batch_result)
+        del batch_result
+        gc.collect()
+        all_results.append(batch_result_cpu)
+
+        batch_rewards = batch_result_cpu["metrics"]["mean_reward"]  # (bs, num_updates)
+        for i in range(actual_bs):
+            global_i = b_start + i
+            seed_idx = global_i // pop_size
+            agent_idx = global_i % pop_size
+            print(f"    seed {seeds[seed_idx]} agent {agent_idx}: "
+                  f"final reward = {float(batch_rewards[i, -1]):.4f}")
+
     elapsed = time.time() - t0
-
-    mean_rewards = result["metrics"]["mean_reward"]  # (total_agents, num_updates)
-    for i in range(total_agents):
-        seed_idx = i // pop_size
-        agent_idx = i % pop_size
-        print(f"  seed {seeds[seed_idx]} agent {agent_idx}: "
-              f"final reward = {float(mean_rewards[i, -1]):.4f}")
-
     print(f"[SP-POP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 
-    # Split and save per-seed
+    # Merge batch results and save per-seed
+    import numpy as np
+    merged_final_params = jax.tree.map(
+        lambda *xs: np.concatenate(xs, axis=0),
+        *[r["final_params"] for r in all_results]
+    )
+    merged_ckpt_params = jax.tree.map(
+        lambda *xs: np.concatenate(xs, axis=0),
+        *[r["ckpt_params"] for r in all_results]
+    )
+    merged_ckpt_rewards = np.concatenate(
+        [r["ckpt_rewards"] for r in all_results], axis=0
+    )
+    merged_mean_rewards = np.concatenate(
+        [r["metrics"]["mean_reward"] for r in all_results], axis=0
+    )
+
     os.makedirs("checkpoints", exist_ok=True)
     for si, seed in enumerate(seeds):
         start, end = si * pop_size, (si + 1) * pop_size
         ckpt = {
-            "final_params": jax.device_get(
-                jax.tree.map(lambda x: x[start:end], result["final_params"])),
-            "ckpt_params": jax.device_get(
-                jax.tree.map(lambda x: x[start:end], result["ckpt_params"])),
-            "ckpt_rewards": jax.device_get(result["ckpt_rewards"][start:end]),
+            "final_params": jax.tree.map(lambda x: x[start:end], merged_final_params),
+            "ckpt_params": jax.tree.map(lambda x: x[start:end], merged_ckpt_params),
+            "ckpt_rewards": merged_ckpt_rewards[start:end],
             "config": config,
         }
         ckpt_path = f"checkpoints/sp_pop_seed{seed}.pkl"
@@ -302,7 +337,7 @@ def main():
             config={**config, "seed": seed, "method": "SP_POP"},
             enabled=args.wandb, group=args.wandb_group, tags=tags,
         )
-        seed_rewards = jax.device_get(mean_rewards[start:end])  # (pop_size, num_updates)
+        seed_rewards = merged_mean_rewards[start:end]  # (pop_size, num_updates)
         logger.log_training_curves(
             {"mean_reward": seed_rewards.mean(axis=0)}, prefix="train"
         )

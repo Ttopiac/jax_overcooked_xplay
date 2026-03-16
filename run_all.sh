@@ -32,7 +32,7 @@ python print_tables.py
 echo ""
 echo "=== Step 1: SP Population (80 agents) ==="
 python train_sp_population.py --seeds 0,1,2,3,4 \
-    --total-timesteps 100000000 --pop-size 16 --num-agents 2 --wandb
+    --total-timesteps 100000000 --pop-size 16 --num-agents 2 --batch-size 8 --wandb
 
 echo "--- Eval: SP Pop self-play (seeds 3,4) ---"
 for SEED in 3 4; do
