@@ -3,7 +3,8 @@
 # Runs training steps sequentially, evaluates after each step, prints tables.
 set -e
 cd "$(dirname "$0")"
-export PATH="/home/nathan/anaconda3/lib/python3.12/site-packages/nvidia/cuda_nvcc/bin:$PATH"
+source activate jax_overcooked
+export PATH="/home/nathan/anaconda3/envs/jax_overcooked/lib/python3.12/site-packages/nvidia/cuda_nvcc/bin:$PATH"
 export XLA_FLAGS="--xla_gpu_enable_triton_gemm=false"
 
 mkdir -p checkpoints reports/eval_results

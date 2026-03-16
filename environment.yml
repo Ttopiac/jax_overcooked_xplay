@@ -1,0 +1,16 @@
+name: jax_overcooked
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - jax[cuda12]==0.4.38
+    - flax==0.10.4
+    - optax==0.2.5
+    - distrax==0.1.5
+    - chex==0.1.90
+    - jaxmarl
+    - wandb==0.25.1
+    - pandas==2.2.2
