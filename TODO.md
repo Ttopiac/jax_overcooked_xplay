@@ -1,20 +1,5 @@
 # TODO
 
-### Suppress JAX Warnings
-- Repeated `FutureWarning: scatter inputs have incompatible types: cannot safely cast value from dtype=uint32 to dtype=uint8`
-
-**Root cause:** In `overcooked_env/overcooked.py`, uint32 indices from `state.agent_pos` are used to index into uint8 arrays via `.at[].set()`:
-- Line ~276: `agent_pos_layers` (uint8) indexed by `state.agent_pos[k, 1]` / `state.agent_pos[k, 0]` (uint32)
-- Line ~311: `all_dir_layers` (uint8) indexed by `state.agent_dir_idx[k]`
-- Also in `overcooked_env/common.py` lines ~105-168: multiple `.at[].set()` calls with uint32 position indices into uint8 arrays
-
-**How to fix:** Cast indices to int32 before using them in scatter operations, e.g.:
-```python
-y, x = state.agent_pos[k, 1].astype(jnp.int32), state.agent_pos[k, 0].astype(jnp.int32)
-agent_pos_layers = agent_pos_layers.at[k, y, x].set(1)
-```
-Apply the same pattern in `common.py` for all position-indexed `.at[].set()` calls.
-
 ### Evaluation has not supported N-XPlay
 
 **Current state:** `evaluate.py` is hardcoded for 2 agents:
@@ -36,21 +21,6 @@ Apply the same pattern in `common.py` for all position-indexed `.at[].set()` cal
 - `overcooked_env/overcooked.py` — already supports N agents
 - `obs_encoding.py` — `encoder.encode(obs, state, agent_idx, num_envs)` already works for any agent_idx
 - `nxplay.py` — can reuse `select_partners()` and `shuffle_agent_positions()` utilities
-
-### Fix W&B mean_reward to show episode return instead of per-step mean
-
-**Problem:** W&B shows `mean_reward` in the 0-1 range, while evaluation reports rewards in the hundreds. The cause is that training logs `jnp.mean(traj_batch.reward)` which is the **mean reward per step**. Most steps have near-zero reward, so averaging over hundreds of steps gives tiny values.
-
-**What we want:** `mean_reward` should be the **mean episode return** — i.e. sum of shaped rewards over a full episode, averaged across environments. This makes the W&B curve directly comparable to evaluation scores.
-
-**How to fix:** In the training loop of each script, instead of `jnp.mean(traj_batch.reward)`, compute the episode return by summing `traj_batch.reward` over the time axis (per environment), then taking the mean across environments. The shaped reward in `traj_batch.reward` is intentional and should stay as-is.
-
-**Files to update:**
-- `train_sp.py:147`
-- `train_sp_population.py:153`
-- `train_mep.py:378` (pop phase) and `train_mep.py:198` (ego phase inner loop)
-- `train_fcp.py:211`
-- `train_bcp.py:166`
 
 ### Add raw image observation mode
 
