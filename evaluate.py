@@ -147,40 +147,54 @@ def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner
     return results
 
 
+def _get_hidden_dims(data):
+    """Extract hidden_dims from checkpoint data."""
+    if "config" in data and "hidden_dims" in data["config"]:
+        return tuple(data["config"]["hidden_dims"])
+    if "bc_hidden_dims" in data:
+        return tuple(data["bc_hidden_dims"])
+    return None
+
+
 def load_pop_agents(path):
-    """Load population agents from checkpoint. Returns list of param dicts."""
+    """Load population agents from checkpoint. Returns (list of param dicts, hidden_dims)."""
     with open(path, "rb") as f:
         data = pickle.load(f)
+
+    hidden_dims = _get_hidden_dims(data)
 
     if "final_params" in data:
         # SP Pop format
         params = data["final_params"]
         n = jax.tree.leaves(params)[0].shape[0]
-        return [jax.tree.map(lambda x: x[i], params) for i in range(n)]
+        return [jax.tree.map(lambda x: x[i], params) for i in range(n)], hidden_dims
     elif "all_params" in data:
         # MEP Pop format
         params = data["all_params"]
         n = jax.tree.leaves(params)[0].shape[0]
-        return [jax.tree.map(lambda x: x[i], params) for i in range(n)]
+        return [jax.tree.map(lambda x: x[i], params) for i in range(n)], hidden_dims
     elif "bc_params" in data:
         # BC format
         agents = []
         for layout in data["bc_params"]:
             for p in data["bc_params"][layout]:
                 agents.append(p)
-        return agents
+        return agents, hidden_dims
     else:
         raise ValueError(f"Unknown checkpoint format: {list(data.keys())}")
 
 
 def load_ego_agent(path):
-    """Load ego agent params from checkpoint."""
+    """Load ego agent params from checkpoint. Returns (params, hidden_dims)."""
     with open(path, "rb") as f:
         data = pickle.load(f)
+
+    hidden_dims = _get_hidden_dims(data)
+
     if "params" in data:
-        return data["params"]
+        return data["params"], hidden_dims
     elif "ego_params" in data:
-        return data["ego_params"]
+        return data["ego_params"], hidden_dims
     else:
         raise ValueError(f"Unknown checkpoint format: {list(data.keys())}")
 
@@ -259,27 +273,46 @@ def main():
     parser.add_argument("--partner-path", type=str, help="Path to partner (cross-play)")
     parser.add_argument("--partner-type", type=str, default="pop",
                         choices=["pop", "ego", "bc"])
-    parser.add_argument("--hidden-dim", type=int, default=256)
-    parser.add_argument("--num-layers", type=int, default=2)
-    parser.add_argument("--bc-hidden-dim", type=int, default=64)
-    parser.add_argument("--bc-num-layers", type=int, default=2)
     parser.add_argument("--num-episodes", type=int, default=100)
     parser.add_argument("--num-envs", type=int, default=32)
     parser.add_argument("--layouts", type=str, default=None,
                         help="Comma-separated layout names (default: all 5)")
     parser.add_argument("--output", type=str, default=None,
                         help="Save results to JSON file")
+    # Legacy overrides (normally auto-detected from checkpoint)
+    parser.add_argument("--hidden-dim", type=int, default=None,
+                        help="Override RL hidden dim (auto-detected from checkpoint)")
+    parser.add_argument("--num-layers", type=int, default=None,
+                        help="Override RL num layers (auto-detected from checkpoint)")
+    parser.add_argument("--bc-hidden-dim", type=int, default=None,
+                        help="Override BC hidden dim (auto-detected from checkpoint)")
+    parser.add_argument("--bc-num-layers", type=int, default=None,
+                        help="Override BC num layers (auto-detected from checkpoint)")
     args = parser.parse_args()
 
     encoder = ObsEncoder()
-    rl_network = ActorCritic(action_dim=6, hidden_dims=tuple([args.hidden_dim] * args.num_layers))
-    bc_network = ActorCritic(action_dim=6, hidden_dims=tuple([args.bc_hidden_dim] * args.bc_num_layers))
     layouts = args.layouts.split(",") if args.layouts else LAYOUT_NAMES
+
+    def _make_network(hidden_dims):
+        return ActorCritic(action_dim=6, hidden_dims=hidden_dims)
+
+    def _override_or_detect(hidden_dims, override_dim, override_layers):
+        """Use CLI override if provided, otherwise use checkpoint's hidden_dims."""
+        if override_dim is not None and override_layers is not None:
+            return tuple([override_dim] * override_layers)
+        if hidden_dims is not None:
+            return hidden_dims
+        raise ValueError("Could not detect network architecture from checkpoint. "
+                         "Use --hidden-dim and --num-layers to specify manually.")
 
     if args.mode == "self-play-pop":
         print(f"[EVAL] Self-play evaluation: {args.agent_path}")
-        agents = load_pop_agents(args.agent_path)
-        network = bc_network if args.agent_type == "bc" else rl_network
+        agents, ckpt_dims = load_pop_agents(args.agent_path)
+        if args.agent_type == "bc":
+            dims = _override_or_detect(ckpt_dims, args.bc_hidden_dim, args.bc_num_layers)
+        else:
+            dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
+        network = _make_network(dims)
         eval_layouts = BCP_LAYOUTS if args.agent_type == "bc" else layouts
 
         results_table = {}
@@ -296,23 +329,34 @@ def main():
 
     elif args.mode == "self-play-ego":
         print(f"[EVAL] Self-play evaluation (ego): {args.agent_path}")
-        params = jax.device_put(load_ego_agent(args.agent_path))
-        results = evaluate_self_play(rl_network, params, encoder, layouts,
+        params, ckpt_dims = load_ego_agent(args.agent_path)
+        dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
+        network = _make_network(dims)
+        params = jax.device_put(params)
+        results = evaluate_self_play(network, params, encoder, layouts,
                                       args.num_episodes, args.num_envs)
         mean_r = np.mean(list(results.values()))
         print(f"  mean={mean_r:.1f}, {results}")
 
     elif args.mode == "cross-play":
         print(f"[EVAL] Cross-play: ego={args.ego_path} vs partner={args.partner_path}")
-        ego_params = jax.device_put(load_ego_agent(args.ego_path))
-        partners = load_pop_agents(args.partner_path)
-        partner_network = bc_network if args.partner_type == "bc" else rl_network
+        ego_params, ego_dims = load_ego_agent(args.ego_path)
+        ego_dims = _override_or_detect(ego_dims, args.hidden_dim, args.num_layers)
+        ego_network = _make_network(ego_dims)
+        ego_params = jax.device_put(ego_params)
+
+        partners, partner_dims = load_pop_agents(args.partner_path)
+        if args.partner_type == "bc":
+            p_dims = _override_or_detect(partner_dims, args.bc_hidden_dim, args.bc_num_layers)
+        else:
+            p_dims = _override_or_detect(partner_dims, args.hidden_dim, args.num_layers)
+        partner_network = _make_network(p_dims)
         eval_layouts = BCP_LAYOUTS if args.partner_type == "bc" else layouts
 
         all_results = []
         for i, p_params in enumerate(partners):
             p_params = jax.device_put(p_params)
-            results = evaluate_cross_play(rl_network, ego_params, partner_network, p_params,
+            results = evaluate_cross_play(ego_network, ego_params, partner_network, p_params,
                                            encoder, eval_layouts, args.num_episodes, args.num_envs)
             mean_r = np.mean(list(results.values()))
             all_results.append((results, mean_r))
