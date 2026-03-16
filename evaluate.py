@@ -259,8 +259,8 @@ def main():
     parser.add_argument("--partner-path", type=str, help="Path to partner (cross-play)")
     parser.add_argument("--partner-type", type=str, default="pop",
                         choices=["pop", "ego", "bc"])
-    parser.add_argument("--hidden-dim", type=int, default=64)
-    parser.add_argument("--num-layers", type=int, default=3)
+    parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--bc-hidden-dim", type=int, default=64)
     parser.add_argument("--bc-num-layers", type=int, default=2)
     parser.add_argument("--num-episodes", type=int, default=100)
