@@ -23,7 +23,7 @@ done
 echo "--- Eval: BC self-play ---"
 for SEED in 3 4; do
     python evaluate.py --mode self-play-pop --agent-path checkpoints/bc_seed${SEED}.pkl \
-        --agent-type bc --bc-hidden-dim 64 --bc-num-layers 2 \
+        --agent-type bc \
         --layouts cramped_room,asymm_advantages,coord_ring \
         --output reports/eval_results/bc_selfplay_seed${SEED}.json
 done
@@ -157,7 +157,6 @@ for EGO_METHOD in sp mep16 mep8 bcp fcp; do
 
             python evaluate.py --mode cross-play --ego-path $EGO_PATH \
                 --partner-path checkpoints/bc_seed${P_SEED}.pkl --partner-type bc \
-                --bc-hidden-dim 64 --bc-num-layers 2 \
                 --layouts cramped_room,asymm_advantages,coord_ring \
                 --output reports/eval_results/cross_${EGO_METHOD}_s${EGO_SEED}_vs_bc_s${P_SEED}.json
         done
