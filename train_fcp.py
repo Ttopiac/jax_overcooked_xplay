@@ -297,11 +297,24 @@ def main():
         print(f"  Loading {pop_path}")
         with open(pop_path, "rb") as f:
             pop_data = pickle.load(f)
-        ckpt_params = jax.device_put(pop_data["ckpt_params"])
-        ckpt_rewards = jax.device_put(pop_data["ckpt_rewards"])
-        h, m, l = categorize_checkpoints(ckpt_params, ckpt_rewards)
-        # Combine all tiers into one pool for uniform sampling
-        pool = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=0), h, m, l)
+        ckpt_params = pop_data["ckpt_params"]
+        ckpt_rewards = pop_data["ckpt_rewards"]
+        # Use checkpoints for H/M/L diversity, but subsample to save GPU memory
+        # ckpt_params shape: (pop_size, num_ckpts, ...) -> flatten to (pop_size*num_ckpts, ...)
+        flat_params = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), ckpt_params)
+        flat_rewards = ckpt_rewards.reshape(-1)
+        total_pool = jax.tree.leaves(flat_params)[0].shape[0]
+        # Subsample to at most 48 partners (16 H + 16 M + 16 L) to fit in GPU memory
+        max_per_tier = 16
+        sorted_idx = jnp.argsort(-flat_rewards)
+        n = len(sorted_idx)
+        third = max(1, n // 3)
+        h_idx = sorted_idx[:min(third, max_per_tier)]
+        m_idx = sorted_idx[third:min(2*third, third + max_per_tier)]
+        l_idx = sorted_idx[max(2*third, n - max_per_tier):]
+        selected = jnp.concatenate([h_idx, m_idx, l_idx])
+        pool = jax.tree.map(lambda x: jax.device_put(x[selected]), flat_params)
+        print(f"    Pool: {total_pool} total -> {len(selected)} selected (H:{len(h_idx)}, M:{len(m_idx)}, L:{len(l_idx)})")
         all_pool_params.append(pool)
 
     pool_size = jax.tree.leaves(all_pool_params[0])[0].shape[0]
