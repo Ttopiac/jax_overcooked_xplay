@@ -260,9 +260,9 @@ def main():
     parser.add_argument("--seeds", type=str, default="0")
     parser.add_argument("--total-timesteps", type=int, default=100_000_000)
     parser.add_argument("--num-agents", type=int, default=2,
+                        help="N: total agents in the game")
     parser.add_argument("--random-start-pos", action="store_true", default=False,
                         help="Randomize agent starting positions (default: fixed layout positions)")
-                        help="N: total agents in the game")
     parser.add_argument("--num-unseen", type=int, default=1,
                         help="X: number of unseen teammate slots")
     parser.add_argument("--xplay-mode", type=str, default="hetero",
