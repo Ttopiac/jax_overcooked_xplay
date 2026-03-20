@@ -85,6 +85,11 @@
 8. MEP-8 pop outperforms MEP-16 pop in self-play (246.9 vs 189.5) — fewer agents = more training per agent
 9. FCP partner pool was subsampled to 48 (from 560) due to GPU memory constraints
 
+## Known Issues
+
+1. **Cross-play JSON bug**: `evaluate.py` line 373 saves only the last partner's per-layout results, not the mean across all partners. The console output (`overall_mean`) is correct, but the saved JSON and therefore the Table 4 numbers from `print_tables.py` are based on the last partner only.
+2. **Single partner per PPO update**: All 210 parallel envs use the same partner during training. multiHRI samples a different partner for each of the 210 envs per update. This reduces partner diversity during training and likely hurts cross-play performance. Fixed in Run 3.
+
 ## How to Resume
 
 - **Retrain all**: `bash run_all.sh`
