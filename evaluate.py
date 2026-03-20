@@ -366,11 +366,24 @@ def main():
         overall_mean = np.mean([r[1] for r in all_results])
         print(f"  Overall mean: {overall_mean:.1f}")
 
+        # Aggregate results across all partners (mean per layout)
+        agg_results = {}
+        for layout in eval_layouts:
+            layout_vals = [r[0].get(layout, 0) for r in all_results]
+            agg_results[layout] = float(np.mean(layout_vals))
+        results = agg_results
+
     if args.output:
         # Save results
         os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        if args.mode == "self-play-pop":
+            save_data = {"mode": args.mode, "results": results_table}
+        elif args.mode == "cross-play":
+            save_data = {"mode": args.mode, "results": results}
+        else:
+            save_data = {"mode": args.mode, "results": results}
         with open(args.output, "w") as f:
-            json.dump({"mode": args.mode, "results": results_table if args.mode == "self-play-pop" else results}, f, indent=2)
+            json.dump(save_data, f, indent=2)
         print(f"  Saved to {args.output}")
 
 

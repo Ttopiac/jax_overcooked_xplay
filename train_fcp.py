@@ -24,7 +24,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
-from nxplay import select_partners, shuffle_agent_slots
+from nxplay import select_partners_per_env, shuffle_agent_slots
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -81,9 +81,10 @@ def make_fcp_train(config, network, encoder, reward_shaper):
 
             if num_unseen > 0:
                 # For FCP: pool is the combined H/M/L checkpoints
-                partner_params = select_partners(
-                    partner_rng, pool_params, num_unseen, homo=homo
-                )  # tree of (num_unseen, ...)
+                # Sample a different partner for each env (matching multiHRI)
+                partner_params = select_partners_per_env(
+                    partner_rng, pool_params, num_unseen, n_env_l, homo=homo
+                )  # tree of (num_unseen, n_env_l, ...)
             else:
                 partner_params = None
 
@@ -129,10 +130,10 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                         ego_transitions.append((all_obs_encoded[k], a, lp, val))
                         actions_list.append(a)
 
-                    # Compute partner actions
+                    # Compute partner actions (different partner per env)
                     for j in range(num_unseen):
-                        p_params = jax.tree.map(lambda x: x[j], partner_params)
-                        pi, _ = network.apply(p_params, all_obs_encoded[num_ego + j])
+                        p_params = jax.tree.map(lambda x: x[j], partner_params)  # (n_env_l, ...)
+                        pi, _ = jax.vmap(network.apply)(p_params, all_obs_encoded[num_ego + j])
                         a = pi.sample(seed=action_rngs[num_ego + j])
                         actions_list.append(a)
 

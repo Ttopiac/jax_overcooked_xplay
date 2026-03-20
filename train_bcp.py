@@ -19,7 +19,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
-from nxplay import select_partners, shuffle_agent_slots
+from nxplay import select_partners_per_env, shuffle_agent_slots
 from train_bc import BC_HIDDEN_DIMS, BC_LAYOUTS
 
 BCP_JAXMARL_LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring"]
@@ -64,8 +64,8 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
             rng, coin_rng, partner_rng, shuffle_rng = jax.random.split(rng, 4)
             use_bc = jax.random.uniform(coin_rng) < bc_factor
 
-            # Select BC partners
-            bc_partner_params = select_partners(partner_rng, all_bc_params, num_unseen, homo=homo)
+            # Select BC partners (different partner per env, matching multiHRI)
+            bc_partner_params = select_partners_per_env(partner_rng, all_bc_params, num_unseen, n_env_l, homo=homo)
 
             # Shuffle positions
             all_env_states_s = tuple(
@@ -100,9 +100,10 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
                         actions_list.append(a)
 
                     # Partner agents: BC or self-play based on bc_factor
+                    # (different BC partner per env, matching multiHRI)
                     for j in range(num_unseen):
-                        p_params = jax.tree.map(lambda x: x[j], bc_partner_params)
-                        bc_pi, _ = bc_network.apply(p_params, all_obs_enc[num_ego + j])
+                        p_params = jax.tree.map(lambda x: x[j], bc_partner_params)  # (n_env_l, ...)
+                        bc_pi, _ = jax.vmap(bc_network.apply)(p_params, all_obs_enc[num_ego + j])
                         sp_pi, _ = ego_network.apply(train_state.params, all_obs_enc[num_ego + j])
                         a_bc = bc_pi.sample(seed=action_rngs[num_ego + j])
                         a_sp = sp_pi.sample(seed=action_rngs[num_ego + j])

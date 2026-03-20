@@ -270,19 +270,21 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
             priorities = (1.0 / ranks) ** priority_alpha
             probs = priorities / priorities.sum()
 
-            # Select X partners via prioritized sampling
+            # Select X partners via prioritized sampling (different per env, matching multiHRI)
             if num_unseen > 0:
                 if homo:
-                    partner_idx = jax.random.choice(partner_rng, pop_size, p=probs)
-                    single = jax.tree.map(lambda x: x[partner_idx], pop_params)
+                    # Each env gets one partner from priority dist, replicated to X slots
+                    indices = jax.random.choice(partner_rng, pop_size, shape=(n_env_l,), p=probs)
+                    per_env = jax.tree.map(lambda x: x[indices], pop_params)  # (n_env_l, ...)
                     partner_params = jax.tree.map(
-                        lambda x: jnp.broadcast_to(x[None], (num_unseen, *x.shape)), single
-                    )
+                        lambda x: jnp.broadcast_to(x[None], (num_unseen, *x.shape)), per_env
+                    )  # (num_unseen, n_env_l, ...)
                 else:
-                    indices = jax.random.choice(partner_rng, pop_size, shape=(num_unseen,),
-                                                p=probs, replace=num_unseen > pop_size)
-                    partner_params = jax.tree.map(lambda x: x[indices], pop_params)
-                    partner_idx = indices[0]  # track first partner for EMA
+                    indices = jax.random.choice(partner_rng, pop_size, shape=(num_unseen, n_env_l),
+                                                p=probs)
+                    partner_params = jax.tree.map(lambda x: x[indices], pop_params)  # (num_unseen, n_env_l, ...)
+                # Track most common partner for EMA update
+                partner_idx = jnp.argmax(jnp.bincount(indices.ravel(), length=pop_size))
             else:
                 partner_params = None
                 partner_idx = jnp.int32(0)
@@ -318,9 +320,10 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                         ego_transitions.append((all_obs_enc[k], a, lp, val))
                         actions_list.append(a)
 
+                    # Partner actions (different partner per env)
                     for j in range(num_unseen):
-                        p_params = jax.tree.map(lambda x: x[j], partner_params)
-                        pi, _ = network.apply(p_params, all_obs_enc[num_ego + j])
+                        p_params = jax.tree.map(lambda x: x[j], partner_params)  # (n_env_l, ...)
+                        pi, _ = jax.vmap(network.apply)(p_params, all_obs_enc[num_ego + j])
                         a = pi.sample(seed=action_rngs[num_ego + j])
                         actions_list.append(a)
 
@@ -441,6 +444,8 @@ def main():
     parser.add_argument("--ego-seeds", type=str, default=None,
                         help="Comma-separated seeds for ego training (default: same as --seeds)")
     parser.add_argument("--pop-timesteps", type=int, default=100_000_000)
+    parser.add_argument("--skip-pop", action="store_true", default=False,
+                        help="Skip Phase 1 (pop training), load existing pop checkpoints")
     parser.add_argument("--num-agents", type=int, default=2)
     parser.add_argument("--random-start-pos", action="store_true", default=False,
                         help="Randomize agent starting positions (default: fixed layout positions)")
@@ -477,46 +482,63 @@ def main():
     config = get_config(args)
 
     # Phase 1: MEP population training (vmap over seeds)
-    pop_rounds = config["num_updates"] // config["epoch_updates"]
-    print(f"[MEP] Phase 1: pop={args.pop_size}, seeds={pop_seeds}, "
-          f"{pop_rounds} rounds × {args.epoch_updates} updates/round, "
-          f"{args.pop_timesteps/1e6:.0f}M ({len(pop_seeds)} seeds vmapped)")
-
-    train_pop_fn, network, encoder = make_mep_pop_train(config)
-    multi_pop_fn = jax.jit(jax.vmap(train_pop_fn))
-    pop_rngs = jnp.stack([jax.random.PRNGKey(s) for s in pop_seeds])
-
-    t0 = time.time()
-    pop_results = multi_pop_fn(pop_rngs)
-    jax.block_until_ready(pop_results["all_params"])
-    pop_time = time.time() - t0
-
-    for i, seed in enumerate(pop_seeds):
-        r = float(pop_results["metrics"]["mean_reward"][i, -1])
-        print(f"  seed {seed}: final pop reward = {r:.4f}")
-    print(f"[MEP] Phase 1 done in {pop_time:.1f}s ({pop_time/60:.1f} min)")
-
-    # Save pop params per seed + W&B
     os.makedirs("checkpoints", exist_ok=True)
     tags = args.wandb_tags.split(",") if args.wandb_tags else [f"mep{args.pop_size}"]
-    for i, seed in enumerate(pop_seeds):
-        pop_ckpt = {
-            "all_params": jax.device_get(jax.tree.map(lambda x: x[i], pop_results["all_params"])),
-            "config": config,
-        }
-        with open(f"checkpoints/mep{args.pop_size}_pop_seed{seed}.pkl", "wb") as f:
-            pickle.dump(pop_ckpt, f)
 
-        logger = WandbLogger(
-            project=args.wandb_project, name=f"mep{args.pop_size}_pop_seed{seed}",
-            config={**config, "seed": seed, "method": f"MEP{args.pop_size}_POP"},
-            enabled=args.wandb, group=args.wandb_group, tags=tags,
-        )
-        pop_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], pop_results["metrics"]))
-        logger.log_training_curves(pop_metrics_i, prefix="pop")
-        logger.log_summary({"final_pop_reward": float(pop_metrics_i["mean_reward"][-1]),
-                            "pop_time_s": pop_time})
-        logger.finish()
+    skip_pop = getattr(args, "skip_pop", False)
+
+    if skip_pop:
+        print(f"[MEP] Phase 1: SKIPPED (--skip-pop). Loading existing pop checkpoints.")
+        # Load existing pop checkpoints
+        pop_all_params = {}
+        for seed in pop_seeds:
+            ckpt_path = f"checkpoints/mep{args.pop_size}_pop_seed{seed}.pkl"
+            with open(ckpt_path, "rb") as f:
+                pop_data = pickle.load(f)
+            pop_all_params[seed] = pop_data["all_params"]
+            print(f"  Loaded {ckpt_path}")
+
+        # Need network and encoder for Phase 2
+        _, network, encoder = make_mep_pop_train(config)
+    else:
+        pop_rounds = config["num_updates"] // config["epoch_updates"]
+        print(f"[MEP] Phase 1: pop={args.pop_size}, seeds={pop_seeds}, "
+              f"{pop_rounds} rounds × {args.epoch_updates} updates/round, "
+              f"{args.pop_timesteps/1e6:.0f}M ({len(pop_seeds)} seeds vmapped)")
+
+        train_pop_fn, network, encoder = make_mep_pop_train(config)
+        multi_pop_fn = jax.jit(jax.vmap(train_pop_fn))
+        pop_rngs = jnp.stack([jax.random.PRNGKey(s) for s in pop_seeds])
+
+        t0 = time.time()
+        pop_results = multi_pop_fn(pop_rngs)
+        jax.block_until_ready(pop_results["all_params"])
+        pop_time = time.time() - t0
+
+        for i, seed in enumerate(pop_seeds):
+            r = float(pop_results["metrics"]["mean_reward"][i, -1])
+            print(f"  seed {seed}: final pop reward = {r:.4f}")
+        print(f"[MEP] Phase 1 done in {pop_time:.1f}s ({pop_time/60:.1f} min)")
+
+        # Save pop params per seed + W&B
+        pop_all_params = {}
+        for i, seed in enumerate(pop_seeds):
+            pop_params_i = jax.device_get(jax.tree.map(lambda x: x[i], pop_results["all_params"]))
+            pop_all_params[seed] = pop_params_i
+            pop_ckpt = {"all_params": pop_params_i, "config": config}
+            with open(f"checkpoints/mep{args.pop_size}_pop_seed{seed}.pkl", "wb") as f:
+                pickle.dump(pop_ckpt, f)
+
+            logger = WandbLogger(
+                project=args.wandb_project, name=f"mep{args.pop_size}_pop_seed{seed}",
+                config={**config, "seed": seed, "method": f"MEP{args.pop_size}_POP"},
+                enabled=args.wandb, group=args.wandb_group, tags=tags,
+            )
+            pop_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], pop_results["metrics"]))
+            logger.log_training_curves(pop_metrics_i, prefix="pop")
+            logger.log_summary({"final_pop_reward": float(pop_metrics_i["mean_reward"][-1]),
+                                "pop_time_s": pop_time})
+            logger.finish()
 
     # Phase 2: Ego agent training (vmap over ego_seeds)
     if config["ego_num_updates"] > 0 and ego_seeds:
@@ -535,8 +557,7 @@ def main():
         # Stack per-seed pop params for ego seeds
         ego_pop_params = []
         for seed in ego_seeds:
-            si = pop_seeds.index(seed)
-            ego_pop_params.append(jax.tree.map(lambda x: x[si], pop_results["all_params"]))
+            ego_pop_params.append(jax.device_put(pop_all_params[seed]))
         stacked_pop = jax.tree.map(lambda *xs: jnp.stack(xs), *ego_pop_params)
 
         ego_rngs = jnp.stack([jax.random.PRNGKey(s + 3000) for s in ego_seeds])
@@ -556,7 +577,7 @@ def main():
             ego_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], ego_results["metrics"]))
             ckpt = {
                 "ego_params": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["train_state"].params)),
-                "pop_params": jax.device_get(jax.tree.map(lambda x: x[pop_seeds.index(seed)], pop_results["all_params"])),
+                "pop_params": jax.device_get(pop_all_params[seed]),
                 "config": config,
                 "ego_metrics": ego_metrics_i,
             }

@@ -95,6 +95,40 @@ def compute_actions(network, ego_params, partner_params, obs_per_agent,
     return actions, ego_log_probs, ego_values
 
 
+def select_partners_per_env(rng, partner_pool_params, num_unseen, num_envs, homo=False):
+    """Select different partner params for each parallel env.
+
+    Unlike select_partners() which picks one partner for all envs,
+    this picks a different partner per env (matching multiHRI behavior).
+
+    Args:
+        rng: JAX random key
+        partner_pool_params: stacked params, tree of (pool_size, ...)
+        num_unseen: X partners to select per env
+        num_envs: number of parallel environments
+        homo: if True, all X slots in each env use same partner (but different across envs)
+
+    Returns:
+        per_env_partner_params: tree of (num_unseen, num_envs, ...) — different params per env
+    """
+    if num_unseen == 0:
+        return None
+
+    pool_size = jax.tree.leaves(partner_pool_params)[0].shape[0]
+
+    if homo:
+        # Each env gets one partner, replicated to X slots
+        indices = jax.random.randint(rng, (num_envs,), 0, pool_size)
+        per_env = jax.tree.map(lambda x: x[indices], partner_pool_params)  # (num_envs, ...)
+        return jax.tree.map(
+            lambda x: jnp.broadcast_to(x[None], (num_unseen, *x.shape)), per_env
+        )  # (num_unseen, num_envs, ...)
+    else:
+        # Each env gets X independently sampled partners
+        indices = jax.random.randint(rng, (num_unseen, num_envs), 0, pool_size)
+        return jax.tree.map(lambda x: x[indices], partner_pool_params)  # (num_unseen, num_envs, ...)
+
+
 def shuffle_agent_slots(rng, state, num_agents):
     """Shuffle which agent slot maps to which physical position (multiHRI-style).
 
