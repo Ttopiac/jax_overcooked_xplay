@@ -37,6 +37,17 @@
   - From SP Pop: `bash run_from_step1.sh`
   - FCP + eval only: `bash run_from_step6.sh`
 
+## Run 4 — Full grid observation + CNN (pixel-based input)
+
+- **Date**: 2026-03-21
+- **Report**: [`reports/run4_report.md`](run4_report.md)
+- **Cross-run analysis**: [`reports/cross_run_analysis.md`](cross_run_analysis.md)
+- **Checkpoints**: `checkpoints/` (current)
+- **Eval results**: `reports/eval_results/` (current)
+- **Key settings**: CNNActorCritic, `--obs-encoding full` (26x5x9), 10M timesteps, pop_size=8, 2-3 seeds
+- **Best cross-play**: FCP (~45) — all methods significantly worse than MLP runs due to insufficient training and lack of egocentric inductive bias
+- **Conclusion**: Egocentric 7x7 + MLP (Run 3) remains far superior; CNN needs 100M+ steps and data augmentation to compete
+
 ## Settings Comparison
 
 - **Side-by-side**: [`reports/settings_comparison.md`](settings_comparison.md)

@@ -17,7 +17,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from overcooked_env import Overcooked, overcooked_layouts
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 from evaluate import evaluate_episode
 
@@ -85,7 +85,6 @@ def main():
     args = parser.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
-    encoder = ObsEncoder()
 
     for seed in seeds:
         pop_path = f"checkpoints/sp_pop_seed{seed}.pkl"
@@ -97,8 +96,13 @@ def main():
 
         ckpt_params = pop_data["ckpt_params"]
         config = pop_data["config"]
-        hidden_dims = config["hidden_dims"] if "hidden_dims" in config else (256, 256)
-        network = ActorCritic(action_dim=6, hidden_dims=hidden_dims)
+        obs_enc = config.get("obs_encoding", "egocentric")
+        encoder = ObsEncoder(mode=obs_enc)
+        if obs_enc == "full":
+            network = CNNActorCritic(action_dim=6)
+        else:
+            hidden_dims = config["hidden_dims"] if "hidden_dims" in config else (256, 256)
+            network = ActorCritic(action_dim=6, hidden_dims=hidden_dims)
 
         # Flatten: (pop_size, num_ckpts, ...) -> (pop_size * num_ckpts, ...)
         flat_params = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), ckpt_params)

@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -61,7 +61,8 @@ def make_fcp_train(config, network, encoder, reward_shaper):
         """
         n_layouts = len(LAYOUT_NAMES)
         rng, init_rng = jax.random.split(rng)
-        train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
+        obs_init_shape = encoder.obs_shape if encoder.obs_shape is not None else (encoder.obs_flat_dim,)
+        train_state = create_train_state(init_rng, network, obs_init_shape, config["lr"])
 
         all_env_states = []
         all_obs = []
@@ -243,6 +244,7 @@ def get_config(args):
         "reward_mode": args.reward_mode,
         "reward_shaping_factor": args.reward_shaping_factor,
         "reward_shaping_horizon": args.reward_shaping_horizon,
+        "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
     }
 
 
@@ -273,6 +275,8 @@ def main():
     parser.add_argument("--reward-mode", type=str, default="originaler")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
+    parser.add_argument("--obs-encoding", type=str, default="egocentric",
+                        choices=["egocentric", "full"])
     setup_wandb_args(parser)
     args = parser.parse_args()
 
@@ -317,14 +321,17 @@ def main():
     # Stack: (n_seeds, n_layouts, 3, ...)
     stacked_pool = jax.tree.map(lambda *xs: jnp.stack(xs), *all_pool_params)
 
-    encoder = ObsEncoder()
+    encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(
         mode=config["reward_mode"],
         reward_shaping_factor=config["reward_shaping_factor"],
         reward_shaping_horizon=config["reward_shaping_horizon"],
     )
     action_dim = 6
-    network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
+    if encoder.obs_shape is not None:
+        network = CNNActorCritic(action_dim=action_dim)
+    else:
+        network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     fcp_train_fn = make_fcp_train(config, network, encoder, reward_shaper)
     multi_fcp_fn = jax.jit(jax.vmap(fcp_train_fn))

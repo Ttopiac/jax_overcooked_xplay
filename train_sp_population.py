@@ -17,7 +17,7 @@ import optax
 from flax.training.train_state import TrainState
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -36,9 +36,12 @@ def make_parallel_sp_train(config):
     n_env_l = config["num_envs_per_layout"]
     n_env_total = n_env_l * n_layouts
 
-    encoder = ObsEncoder()
+    encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
-    network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
+    if encoder.obs_shape is not None:
+        network = CNNActorCritic(action_dim=action_dim)
+    else:
+        network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     num_updates = config["num_updates"]
     num_ckpts = config["num_checkpoints"]
@@ -46,7 +49,8 @@ def make_parallel_sp_train(config):
 
     def train_single_agent(rng):
         rng, init_rng = jax.random.split(rng)
-        train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
+        obs_init_shape = encoder.obs_shape if encoder.obs_shape is not None else (encoder.obs_flat_dim,)
+        train_state = create_train_state(init_rng, network, obs_init_shape, config["lr"])
 
         # Init envs for all layouts
         all_env_states = []
@@ -213,6 +217,7 @@ def get_config(args):
         "reward_shaping_horizon": args.reward_shaping_horizon,
         "pop_size": args.pop_size,
         "num_checkpoints": args.num_checkpoints,
+        "obs_encoding": args.obs_encoding,
     }
 
 

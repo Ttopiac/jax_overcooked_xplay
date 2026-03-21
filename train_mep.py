@@ -19,7 +19,7 @@ import optax
 from flax.training.train_state import TrainState
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -38,9 +38,12 @@ def make_mep_pop_train(config):
     n_env_total = n_env_l * n_layouts
     pop_size = config["pop_size"]
 
-    encoder = ObsEncoder()
+    encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
-    network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
+    if encoder.obs_shape is not None:
+        network = CNNActorCritic(action_dim=action_dim)
+    else:
+        network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
     tx = optax.chain(optax.clip_by_global_norm(0.5), optax.adam(config["lr"], eps=1e-5))
 
@@ -53,7 +56,8 @@ def make_mep_pop_train(config):
         rng = init_rngs[0]
 
         def _init_one(r):
-            return network.init(r, jnp.zeros((encoder.obs_flat_dim,)))
+            obs_init_shape = encoder.obs_shape if encoder.obs_shape is not None else (encoder.obs_flat_dim,)
+            return network.init(r, jnp.zeros(obs_init_shape))
 
         all_params = jax.vmap(_init_one)(init_rngs[1 : 1 + pop_size])
         all_opt_states = jax.vmap(tx.init)(all_params)
@@ -270,7 +274,8 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
         pop_size = jax.tree.leaves(pop_params)[0].shape[0]
 
         rng, init_rng = jax.random.split(rng)
-        train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
+        obs_init_shape = encoder.obs_shape if encoder.obs_shape is not None else (encoder.obs_flat_dim,)
+        train_state = create_train_state(init_rng, network, obs_init_shape, config["lr"])
 
         all_env_states = []
         all_obs = []
@@ -352,9 +357,10 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                     obs_0 = encoder.encode(obs, env_state, 0, n_env_l)
                     obs_1 = encoder.encode(obs, env_state, 1, n_env_l)
 
-                    # Route obs based on position
-                    ego_obs = jnp.where(_pos_mask[:, None], obs_0, obs_1)
-                    partner_obs = jnp.where(_pos_mask[:, None], obs_1, obs_0)
+                    # Route obs based on position (supports both flat and image obs)
+                    mask = _pos_mask.reshape(n_env_l, *([1] * (obs_0.ndim - 1)))
+                    ego_obs = jnp.where(mask, obs_0, obs_1)
+                    partner_obs = jnp.where(mask, obs_1, obs_0)
 
                     # Ego forward pass (single params, batch of obs)
                     pi_ego, val_ego = network.apply(train_state.params, ego_obs)
@@ -410,7 +416,8 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                 pos_mask = (all_positions_per_layout[layout_i] == 0)
                 obs_0 = encoder.encode(all_obs[layout_i], all_env_states[layout_i], 0, n_env_l)
                 obs_1 = encoder.encode(all_obs[layout_i], all_env_states[layout_i], 1, n_env_l)
-                ego_obs = jnp.where(pos_mask[:, None], obs_0, obs_1)
+                bmask = pos_mask.reshape(n_env_l, *([1] * (obs_0.ndim - 1)))
+                ego_obs = jnp.where(bmask, obs_0, obs_1)
                 _, lv = network.apply(train_state.params, ego_obs)
                 all_last_vals.append(lv)
             last_val = jnp.concatenate(all_last_vals)
@@ -473,6 +480,7 @@ def get_config(args):
         "mep_alpha": args.mep_alpha,
         "priority_alpha": args.priority_alpha,
         "num_eval_envs": getattr(args, "num_eval_envs", 8),
+        "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
     }
 
 

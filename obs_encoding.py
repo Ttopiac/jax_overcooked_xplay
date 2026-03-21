@@ -34,6 +34,12 @@ EGO_SIZE = 7
 EGO_CHANNELS = 26  # JaxMARL's channel count
 EGO_FLAT_DIM = EGO_CHANNELS * EGO_SIZE * EGO_SIZE  # 1274
 
+# Full grid observation: pad all layouts to max size (9w x 5h)
+FULL_MAX_W = 9
+FULL_MAX_H = 5
+FULL_CHANNELS = 26
+FULL_OBS_SHAPE = (FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W)  # (26, 5, 9) CHW format
+
 
 def _egocentric_single(obs, agent_pos, agent_dir_idx):
     """Convert one (H, W, C) observation to egocentric (C, EGO_SIZE, EGO_SIZE).
@@ -101,17 +107,55 @@ def egocentric_encode(obs, state, agent_idx, num_envs):
     return ego_obs.reshape(num_envs, -1)  # (num_envs, EGO_FLAT_DIM)
 
 
+def full_grid_encode(obs, state, agent_idx, num_envs):
+    """Encode observations as full padded grid images (CHW format).
+
+    Returns the full grid observation for the specified agent, padded to
+    (FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W) for consistent shape across layouts.
+
+    Args:
+        obs: dict with agent keys, each value shape (num_envs, W, H, C).
+        state: JaxMARL env state.
+        agent_idx: int, which agent to encode for.
+        num_envs: number of parallel environments.
+
+    Returns:
+        (num_envs, FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W) float32.
+    """
+    agent_key = f"agent_{agent_idx}"
+    raw_obs = obs[agent_key]  # (num_envs, H, W, C)
+
+    # Transpose to CHW: (num_envs, C, H, W)
+    obs_chw = raw_obs.transpose(0, 3, 1, 2).astype(jnp.float32)  # (num_envs, C, H, W)
+
+    # Pad to max size: (C, H, W) -> (C, FULL_MAX_H, FULL_MAX_W)
+    c, h, w = obs_chw.shape[1], obs_chw.shape[2], obs_chw.shape[3]
+    pad_h = FULL_MAX_H - h
+    pad_w = FULL_MAX_W - w
+    if pad_h > 0 or pad_w > 0:
+        obs_chw = jnp.pad(obs_chw, ((0, 0), (0, 0), (0, pad_h), (0, pad_w)))
+
+    return obs_chw  # (num_envs, FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W)
+
+
 class ObsEncoder:
     """Configurable observation encoder.
 
     Args:
-        mode: "egocentric" (only supported mode currently).
+        mode: "egocentric" or "full".
+            - egocentric: 7x7 crop centered on agent, rotated. Output: (num_envs, 1274).
+            - full: full padded grid image. Output: (num_envs, 26, 5, 9).
     """
 
     def __init__(self, mode="egocentric"):
-        assert mode in ("egocentric",), f"Unknown encoding mode: {mode}"
+        assert mode in ("egocentric", "full"), f"Unknown encoding mode: {mode}"
         self.mode = mode
-        self.obs_flat_dim = EGO_FLAT_DIM
+        if mode == "egocentric":
+            self.obs_flat_dim = EGO_FLAT_DIM
+            self.obs_shape = None  # flat vector
+        else:
+            self.obs_flat_dim = FULL_CHANNELS * FULL_MAX_H * FULL_MAX_W  # 1170
+            self.obs_shape = FULL_OBS_SHAPE  # (26, 5, 9) for CNN
 
     def encode(self, obs, state, agent_idx, num_envs):
         """Encode observations.
@@ -123,6 +167,10 @@ class ObsEncoder:
             num_envs: number of parallel environments.
 
         Returns:
-            (num_envs, self.obs_flat_dim) float32.
+            If mode="egocentric": (num_envs, 1274) float32 flat vector.
+            If mode="full": (num_envs, 26, 5, 9) float32 CHW image.
         """
-        return egocentric_encode(obs, state, agent_idx, num_envs)
+        if self.mode == "egocentric":
+            return egocentric_encode(obs, state, agent_idx, num_envs)
+        else:
+            return full_grid_encode(obs, state, agent_idx, num_envs)

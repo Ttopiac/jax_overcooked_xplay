@@ -23,7 +23,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from overcooked_env import Overcooked, overcooked_layouts
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
@@ -396,12 +396,23 @@ def main():
                         help="Override BC hidden dim (auto-detected from checkpoint)")
     parser.add_argument("--bc-num-layers", type=int, default=None,
                         help="Override BC num layers (auto-detected from checkpoint)")
+    parser.add_argument("--obs-encoding", type=str, default=None,
+                        help="Override obs encoding (auto-detected from checkpoint config)")
     args = parser.parse_args()
 
-    encoder = ObsEncoder()
     layouts = args.layouts.split(",") if args.layouts else LAYOUT_NAMES
 
-    def _make_network(hidden_dims):
+    def _detect_obs_encoding(data):
+        """Detect obs encoding from checkpoint config."""
+        if args.obs_encoding:
+            return args.obs_encoding
+        if "config" in data and "obs_encoding" in data["config"]:
+            return data["config"]["obs_encoding"]
+        return "egocentric"
+
+    def _make_network(hidden_dims, obs_encoding="egocentric"):
+        if obs_encoding == "full":
+            return CNNActorCritic(action_dim=6)
         return ActorCritic(action_dim=6, hidden_dims=hidden_dims)
 
     def _override_or_detect(hidden_dims, override_dim, override_layers):
@@ -415,12 +426,16 @@ def main():
 
     if args.mode == "self-play-pop":
         print(f"[EVAL] Self-play evaluation: {args.agent_path}")
+        with open(args.agent_path, "rb") as f:
+            _ckpt_data = pickle.load(f)
+        obs_enc = _detect_obs_encoding(_ckpt_data)
+        encoder = ObsEncoder(mode=obs_enc)
         agents, ckpt_dims = load_pop_agents(args.agent_path)
         if args.agent_type == "bc":
             dims = _override_or_detect(ckpt_dims, args.bc_hidden_dim, args.bc_num_layers)
         else:
             dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
-        network = _make_network(dims)
+        network = _make_network(dims, obs_enc)
         eval_layouts = BCP_LAYOUTS if args.agent_type == "bc" else layouts
 
         results_table = {}
@@ -437,9 +452,13 @@ def main():
 
     elif args.mode == "self-play-ego":
         print(f"[EVAL] Self-play evaluation (ego): {args.agent_path}")
+        with open(args.agent_path, "rb") as f:
+            _ckpt_data = pickle.load(f)
+        obs_enc = _detect_obs_encoding(_ckpt_data)
+        encoder = ObsEncoder(mode=obs_enc)
         params, ckpt_dims = load_ego_agent(args.agent_path)
         dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
-        network = _make_network(dims)
+        network = _make_network(dims, obs_enc)
         params = jax.device_put(params)
         results = evaluate_self_play(network, params, encoder, layouts,
                                       args.num_episodes, args.num_envs)
@@ -448,17 +467,24 @@ def main():
 
     elif args.mode == "cross-play":
         print(f"[EVAL] Cross-play: ego={args.ego_path} vs partner={args.partner_path}")
+        with open(args.ego_path, "rb") as f:
+            _ego_data = pickle.load(f)
+        obs_enc = _detect_obs_encoding(_ego_data)
+        encoder = ObsEncoder(mode=obs_enc)
         ego_params, ego_dims = load_ego_agent(args.ego_path)
         ego_dims = _override_or_detect(ego_dims, args.hidden_dim, args.num_layers)
-        ego_network = _make_network(ego_dims)
+        ego_network = _make_network(ego_dims, obs_enc)
         ego_params = jax.device_put(ego_params)
 
         partners, partner_dims = load_pop_agents(args.partner_path)
+        with open(args.partner_path, "rb") as f:
+            _partner_data = pickle.load(f)
+        partner_obs_enc = _detect_obs_encoding(_partner_data)
         if args.partner_type == "bc":
             p_dims = _override_or_detect(partner_dims, args.bc_hidden_dim, args.bc_num_layers)
         else:
             p_dims = _override_or_detect(partner_dims, args.hidden_dim, args.num_layers)
-        partner_network = _make_network(p_dims)
+        partner_network = _make_network(p_dims, partner_obs_enc)
         eval_layouts = BCP_LAYOUTS if args.partner_type == "bc" else layouts
 
         all_results = []

@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic
+from networks import ActorCritic, CNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -40,7 +40,8 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
 
     def train(rng, all_bc_params):
         rng, init_rng = jax.random.split(rng)
-        train_state = create_train_state(init_rng, ego_network, (encoder.obs_flat_dim,), config["lr"])
+        obs_init_shape = encoder.obs_shape if encoder.obs_shape is not None else (encoder.obs_flat_dim,)
+        train_state = create_train_state(init_rng, ego_network, obs_init_shape, config["lr"])
 
         all_env_states = []
         all_obs = []
@@ -261,11 +262,15 @@ def main():
     stacked_all_bc = jax.tree.map(lambda *xs: jnp.stack(xs), *all_seed_bc_params)
     stacked_all_bc = jax.device_put(stacked_all_bc)
 
-    encoder = ObsEncoder()
+    encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(mode=config["reward_mode"],
                                  reward_shaping_factor=config["reward_shaping_factor"],
                                  reward_shaping_horizon=config["reward_shaping_horizon"])
-    ego_network = ActorCritic(action_dim=6, hidden_dims=config["hidden_dims"])
+    if encoder.obs_shape is not None:
+        ego_network = CNNActorCritic(action_dim=6)
+    else:
+        ego_network = ActorCritic(action_dim=6, hidden_dims=config["hidden_dims"])
+    # BC network always uses MLP (BC was trained with egocentric encoding)
     bc_network = ActorCritic(action_dim=6, hidden_dims=bc_hidden_dims)
 
     bcp_train_fn = make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, total_bc)
