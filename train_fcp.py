@@ -24,7 +24,7 @@ from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
 from wandb_utils import WandbLogger, setup_wandb_args
-from nxplay import select_partners_per_env, shuffle_agent_slots
+from nxplay import select_partners_per_env, select_partners_per_env_per_layout, shuffle_agent_slots
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
 
@@ -57,8 +57,9 @@ def make_fcp_train(config, network, encoder, reward_shaper):
 
     def train(rng, pool_params):
         """
-        pool_params: stacked partner pool, tree of (pool_size, ...)
+        pool_params: per-layout partner pool, tree of (num_layouts, 3, ...)
         """
+        n_layouts = len(LAYOUT_NAMES)
         rng, init_rng = jax.random.split(rng)
         train_state = create_train_state(init_rng, network, (encoder.obs_flat_dim,), config["lr"])
 
@@ -76,17 +77,15 @@ def make_fcp_train(config, network, encoder, reward_shaper):
         def _update_step(runner_state, update_idx):
             train_state, all_env_states, all_obs, rng = runner_state
 
-            # Select X partner params from pool
             rng, partner_rng, shuffle_rng = jax.random.split(rng, 3)
 
             if num_unseen > 0:
-                # For FCP: pool is the combined H/M/L checkpoints
-                # Sample a different partner for each env (matching multiHRI)
-                partner_params = select_partners_per_env(
-                    partner_rng, pool_params, num_unseen, n_env_l, homo=homo
-                )  # tree of (num_unseen, n_env_l, ...)
+                # Per-layout partner selection: each layout draws from its own H/M/L pool
+                partners_per_layout = select_partners_per_env_per_layout(
+                    partner_rng, pool_params, num_unseen, n_env_l, n_layouts, homo=homo
+                )  # list of n_layouts, each tree of (num_unseen, n_env_l, ...)
             else:
-                partner_params = None
+                partners_per_layout = [None] * n_layouts
 
             # Shuffle agent positions for diversity
             all_env_states_shuffled = tuple(
@@ -103,8 +102,10 @@ def make_fcp_train(config, network, encoder, reward_shaper):
             new_obs_list = []
 
             for layout_i, env in enumerate(envs):
+                # Get this layout's partner params
+                layout_partner_params = partners_per_layout[layout_i]
 
-                def _env_step(carry, inner_step, _env=env):
+                def _env_step(carry, inner_step, _env=env, _partner_params=layout_partner_params):
                     env_state, obs, rng = carry
                     rng, action_rng, step_rng = jax.random.split(rng, 3)
                     action_rngs = jax.random.split(action_rng, num_agents)
@@ -115,8 +116,6 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                         for k in range(num_agents)
                     ]
 
-                    # Compute ego actions for ALL agents (need for ego/clones)
-                    # We compute ego forward pass for ego/clone slots (0..num_ego-1)
                     ego_transitions = []
                     actions_list = []
 
@@ -124,15 +123,12 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                         pi, val = network.apply(train_state.params, all_obs_encoded[k])
                         a = pi.sample(seed=action_rngs[k])
                         lp = pi.log_prob(a)
-
-                        step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
-                        # We'll compute reward after stepping, so store obs/action/lp/val
                         ego_transitions.append((all_obs_encoded[k], a, lp, val))
                         actions_list.append(a)
 
-                    # Compute partner actions (different partner per env)
+                    # Compute partner actions (different partner per env, layout-specific pool)
                     for j in range(num_unseen):
-                        p_params = jax.tree.map(lambda x: x[j], partner_params)  # (n_env_l, ...)
+                        p_params = jax.tree.map(lambda x: x[j], _partner_params)  # (n_env_l, ...)
                         pi, _ = jax.vmap(network.apply)(p_params, all_obs_encoded[num_ego + j])
                         a = pi.sample(seed=action_rngs[num_ego + j])
                         actions_list.append(a)
@@ -147,7 +143,6 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                     step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
                     done_all = dones["__all__"]
 
-                    # Build transitions for each ego/clone agent
                     transitions = []
                     for k in range(num_ego):
                         obs_k, a_k, lp_k, val_k = ego_transitions[k]
@@ -155,11 +150,8 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                         t = Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k)
                         transitions.append(t)
 
-                    # Stack ego/clone transitions: each field becomes (num_ego, num_envs, ...)
-                    # Then reshape to (num_ego * num_envs, ...) later
                     stacked_trans = jax.tree.map(lambda *xs: jnp.stack(xs), *transitions)
-
-                    sparse_r = rewards[agent_names[0]]  # team reward
+                    sparse_r = rewards[agent_names[0]]
                     return (next_state, next_obs, rng), (stacked_trans, sparse_r)
 
                 rng, scan_rng = jax.random.split(rng)
@@ -170,8 +162,6 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                 )
                 new_states.append(carry[0])
                 new_obs_list.append(carry[1])
-                # traj_stacked: each field shape (num_steps, num_ego, n_env_l, ...)
-                # Reshape to (num_steps, num_ego * n_env_l, ...)
                 traj_flat = jax.tree.map(
                     lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]),
                     traj_stacked
@@ -291,37 +281,40 @@ def main():
 
     print(f"[FCP] N={args.num_agents}, X={args.num_unseen}, mode={args.xplay_mode}")
 
-    # Load per-seed SP population
+    # Load per-seed SP population with per-layout H/M/L selection
+    from evaluate import categorize_by_skill_per_layout
     all_pool_params = []
     for seed in seeds:
         pop_path = f"checkpoints/sp_pop_seed{seed}.pkl"
-        print(f"  Loading {pop_path}")
+        scores_path = f"checkpoints/sp_pop_seed{seed}_layout_scores.pkl"
+        print(f"  Loading {pop_path} + {scores_path}")
         with open(pop_path, "rb") as f:
             pop_data = pickle.load(f)
+        with open(scores_path, "rb") as f:
+            scores_data = pickle.load(f)
         ckpt_params = pop_data["ckpt_params"]
-        ckpt_rewards = pop_data["ckpt_rewards"]
-        # Use checkpoints for H/M/L diversity, but subsample to save GPU memory
-        # ckpt_params shape: (pop_size, num_ckpts, ...) -> flatten to (pop_size*num_ckpts, ...)
+        layout_scores = scores_data["layout_scores"]  # (n_total, 5)
+
+        # Flatten: (pop_size, num_ckpts, ...) -> (pop_size*num_ckpts, ...)
         flat_params = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), ckpt_params)
-        flat_rewards = ckpt_rewards.reshape(-1)
-        total_pool = jax.tree.leaves(flat_params)[0].shape[0]
-        # Subsample to at most 48 partners (16 H + 16 M + 16 L) to fit in GPU memory
-        max_per_tier = 16
-        sorted_idx = jnp.argsort(-flat_rewards)
-        n = len(sorted_idx)
-        third = max(1, n // 3)
-        h_idx = sorted_idx[:min(third, max_per_tier)]
-        m_idx = sorted_idx[third:min(2*third, third + max_per_tier)]
-        l_idx = sorted_idx[max(2*third, n - max_per_tier):]
-        selected = jnp.concatenate([h_idx, m_idx, l_idx])
-        pool = jax.tree.map(lambda x: jax.device_put(x[selected]), flat_params)
-        print(f"    Pool: {total_pool} total -> {len(selected)} selected (H:{len(h_idx)}, M:{len(m_idx)}, L:{len(l_idx)})")
+        n_total = jax.tree.leaves(flat_params)[0].shape[0]
+
+        # Per-layout H/M/L: returns tree of (5, 3, ...)
+        pool = categorize_by_skill_per_layout(
+            jax.device_put(flat_params), jnp.array(layout_scores), LAYOUT_NAMES
+        )
+        pool = jax.device_put(pool)
+        print(f"    Pool: {n_total} total -> per-layout (5 layouts × 3 H/M/L)")
+        for li, name in enumerate(LAYOUT_NAMES):
+            scores_li = layout_scores[:, li]
+            h_idx = int(jnp.argmax(jnp.array(scores_li)))
+            l_idx = int(jnp.argmin(jnp.array(scores_li)))
+            print(f"      {name}: H={scores_li[h_idx]:.1f}, L={scores_li[l_idx]:.1f}")
         all_pool_params.append(pool)
 
-    pool_size = jax.tree.leaves(all_pool_params[0])[0].shape[0]
-    print(f"  Pool size per seed: {pool_size}")
+    print(f"  Pool shape per seed: (5, 3, ...)")
 
-    # Stack: (n_seeds, pool_size, ...)
+    # Stack: (n_seeds, n_layouts, 3, ...)
     stacked_pool = jax.tree.map(lambda *xs: jnp.stack(xs), *all_pool_params)
 
     encoder = ObsEncoder()

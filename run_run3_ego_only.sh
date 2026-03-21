@@ -1,7 +1,9 @@
 #!/bin/bash
-# Run 3: Retrain ego agents only with per-env partner sampling.
+# Run 3: Per-layout H/M/L + eval-based sampling.
 # Reuses SP Pop, SP Ego, MEP Pop, and BC checkpoints from Run 2.
-# Only retrains: MEP-16 ego, MEP-8 ego, BCP ego, FCP ego.
+# Retrains: MEP-16 ego, MEP-8 ego, BCP ego, FCP ego.
+# New: Step 0 evaluates SP pop per layout for FCP's per-layout H/M/L pools.
+# New: MEP ego uses eval-based per-layout per-position sampling.
 set -e
 cd "$(dirname "$0")"
 source activate jax_overcooked
@@ -11,7 +13,7 @@ export XLA_FLAGS="--xla_gpu_enable_triton_gemm=false"
 mkdir -p checkpoints reports/eval_results
 
 echo "=========================================="
-echo " Run 3 — Per-env partner sampling (ego retraining only)"
+echo " Run 3 — Per-layout H/M/L + eval-based MEP sampling"
 echo "=========================================="
 
 # Verify Run 2 prerequisites exist
@@ -27,9 +29,14 @@ for f in checkpoints/sp_pop_seed0.pkl checkpoints/sp_pop_seed1.pkl checkpoints/s
 done
 echo "All Run 2 prerequisites found."
 
-# --- Step 1: MEP-16 Ego (retraining with per-env partners) ---
+# --- Step 0: Evaluate SP pop per layout (needed by FCP) ---
 echo ""
-echo "=== Step 1: MEP-16 Ego (per-env partner sampling) ==="
+echo "=== Step 0: Evaluate SP pop per layout ==="
+python evaluate_pop_per_layout.py --seeds 0,1,2,3,4
+
+# --- Step 1: MEP-16 Ego (retraining with eval-based sampling) ---
+echo ""
+echo "=== Step 1: MEP-16 Ego (eval-based per-layout sampling) ==="
 python train_mep.py --seeds 0,1,2,3,4 --ego-seeds 0,1,2 \
     --skip-pop --ego-timesteps 100000000 \
     --pop-size 16 --epoch-updates 1 --num-agents 2 --num-unseen 1 --wandb

@@ -88,6 +88,79 @@ def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key
     return total_sparse.mean()
 
 
+def evaluate_ego_vs_pop(env, network, ego_params, pop_params, encoder, key,
+                        num_eval_envs=8, position=0):
+    """Batched eval of ego vs all pop members for one layout+position.
+
+    JIT-compatible — designed for use inside training scans (MEP Phase 2).
+
+    Args:
+        env: Overcooked env (single layout)
+        network: ActorCritic network (same arch for ego and pop)
+        ego_params: ego policy params (single set)
+        pop_params: population params, tree of (pop_size, ...)
+        encoder: ObsEncoder
+        key: random key
+        num_eval_envs: parallel episodes per pop member
+        position: 0 = ego is agent_0, 1 = ego is agent_1 (Python literal)
+
+    Returns:
+        scores: (pop_size,) mean sparse rewards per pop member
+    """
+    pop_size = jax.tree.leaves(pop_params)[0].shape[0]
+    total_envs = pop_size * num_eval_envs
+
+    keys = jax.random.split(key, total_envs + 1)
+    key = keys[0]
+    obs, state = jax.vmap(env.reset)(keys[1:])
+
+    total_sparse = jnp.zeros(total_envs)
+
+    # Tile pop params: (pop_size, ...) -> (total_envs, ...)
+    partner_params_tiled = jax.tree.map(
+        lambda x: jnp.repeat(x, num_eval_envs, axis=0), pop_params
+    )
+
+    def _step(carry, unused):
+        state, obs, total_sparse, key = carry
+        key, step_key = jax.random.split(key)
+
+        obs_0 = encoder.encode(obs, state, 0, total_envs)
+        obs_1 = encoder.encode(obs, state, 1, total_envs)
+
+        if position == 0:
+            obs_ego, obs_partner = obs_0, obs_1
+        else:
+            obs_ego, obs_partner = obs_1, obs_0
+
+        # Ego: single params, batch of obs
+        pi_ego, _ = network.apply(ego_params, obs_ego)
+        # Partner: different params per env
+        pi_partner, _ = jax.vmap(network.apply)(partner_params_tiled, obs_partner)
+
+        a_ego = pi_ego.logits.argmax(axis=-1)
+        a_partner = pi_partner.logits.argmax(axis=-1)
+
+        if position == 0:
+            a0, a1 = a_ego, a_partner
+        else:
+            a0, a1 = a_partner, a_ego
+
+        actions = {"agent_0": a0, "agent_1": a1}
+        step_keys = jax.random.split(step_key, total_envs)
+        obs, state, rewards, dones, infos = jax.vmap(env.step)(step_keys, state, actions)
+
+        total_sparse = total_sparse + rewards["agent_0"]
+        return (state, obs, total_sparse, key), None
+
+    (_, _, total_sparse, _), _ = jax.lax.scan(
+        _step, (state, obs, total_sparse, key), None, length=400
+    )
+
+    # Reshape to (pop_size, num_eval_envs) and mean per member
+    return total_sparse.reshape(pop_size, num_eval_envs).mean(axis=1)
+
+
 def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_envs=32):
     """Evaluate agent in self-play across layouts.
 
@@ -223,6 +296,41 @@ def categorize_by_skill(agents_results, n_tiers=3):
         "MED": scored[third:2*third],
         "LOW": scored[2*third:],
     }
+
+
+def categorize_by_skill_per_layout(all_params, layout_scores, layout_names):
+    """Categorize agents into H/M/L per layout using per-layout scores.
+
+    For each layout: H = best, L = worst, M = closest to 50% of H's score.
+
+    Args:
+        all_params: flat params, tree of (n_total, ...)
+        layout_scores: (n_total, n_layouts) array of self-play rewards
+        layout_names: list of layout name strings
+
+    Returns:
+        per_layout_pool: tree of (n_layouts, 3, ...) where dim 1 = [H, M, L]
+    """
+    n_total = layout_scores.shape[0]
+    n_layouts = layout_scores.shape[1]
+
+    # For each layout, pick H (best), L (worst), M (closest to 50% of H's score)
+    per_layout_indices = []
+    for li in range(n_layouts):
+        scores = layout_scores[:, li]
+        best_idx = jnp.argmax(scores)
+        worst_idx = jnp.argmin(scores)
+        best_score = scores[best_idx]
+        target_mid = best_score * 0.5
+        mid_idx = jnp.argmin(jnp.abs(scores - target_mid))
+        per_layout_indices.append(jnp.stack([best_idx, mid_idx, worst_idx]))
+
+    # Stack: (n_layouts, 3)
+    indices = jnp.stack(per_layout_indices)
+
+    # Gather params: (n_layouts, 3, ...)
+    per_layout_pool = jax.tree.map(lambda x: x[indices], all_params)
+    return per_layout_pool
 
 
 def print_results_table(title, results_dict):

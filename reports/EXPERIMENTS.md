@@ -24,6 +24,19 @@
   - From SP Pop: `bash run_from_step1.sh`
   - FCP + eval only: `bash run_from_step6.sh`
 
+## Run 3 — Per-layout H/M/L + eval-based MEP sampling
+
+- **Date**: 2026-03-20
+- **Report**: [`reports/run3_report.md`](run3_report.md)
+- **Checkpoints**: `checkpoints/` (current)
+- **Eval results**: `reports/eval_results/` (current)
+- **Key settings**: Same as Run 2 + per-layout H/M/L FCP, eval-based MEP sampling, 3 ckpts/agent (init/mid/final)
+- **Best cross-play**: MEP-8 (133.2)
+- **Resume**:
+  - Full retrain: `bash run_all.sh`
+  - From SP Pop: `bash run_from_step1.sh`
+  - FCP + eval only: `bash run_from_step6.sh`
+
 ## Settings Comparison
 
 - **Side-by-side**: [`reports/settings_comparison.md`](settings_comparison.md)

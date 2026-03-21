@@ -129,6 +129,43 @@ def select_partners_per_env(rng, partner_pool_params, num_unseen, num_envs, homo
         return jax.tree.map(lambda x: x[indices], partner_pool_params)  # (num_unseen, num_envs, ...)
 
 
+def select_partners_per_env_per_layout(rng, per_layout_pool_params, num_unseen,
+                                       num_envs, num_layouts, homo=False):
+    """Select per-env partners from per-layout pools.
+
+    Each layout has its own small pool (e.g. 3 = H/M/L). For each layout,
+    independently sample partners from that layout's pool.
+
+    Args:
+        rng: JAX random key
+        per_layout_pool_params: tree of (num_layouts, pool_per_layout, ...)
+        num_unseen: X partners per env
+        num_envs: parallel envs per layout
+        num_layouts: number of layouts (Python int, unrolled)
+        homo: if True, all X slots use same partner per env
+
+    Returns:
+        list of num_layouts items, each tree of (num_unseen, num_envs, ...)
+    """
+    if num_unseen == 0:
+        return [None] * num_layouts
+
+    pool_per_layout = jax.tree.leaves(per_layout_pool_params)[0].shape[1]
+    results = []
+
+    for l in range(num_layouts):
+        rng, layout_rng = jax.random.split(rng)
+        # Extract this layout's pool: tree of (pool_per_layout, ...)
+        layout_pool = jax.tree.map(lambda x: x[l], per_layout_pool_params)
+        # Use existing per-env selection on this layout's pool
+        partners = select_partners_per_env(
+            layout_rng, layout_pool, num_unseen, num_envs, homo=homo
+        )
+        results.append(partners)
+
+    return results
+
+
 def shuffle_agent_slots(rng, state, num_agents):
     """Shuffle which agent slot maps to which physical position (multiHRI-style).
 
