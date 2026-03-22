@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -276,7 +276,7 @@ def main():
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
-                        choices=["egocentric", "full"])
+                        choices=["egocentric", "full", "pixel"])
     setup_wandb_args(parser)
     args = parser.parse_args()
 
@@ -328,7 +328,10 @@ def main():
         reward_shaping_horizon=config["reward_shaping_horizon"],
     )
     action_dim = 6
-    if encoder.obs_shape is not None:
+    obs_enc = config.get("obs_encoding", "egocentric")
+    if obs_enc == "pixel":
+        network = IMPALACNNActorCritic(action_dim=action_dim)
+    elif encoder.obs_shape is not None:
         network = CNNActorCritic(action_dim=action_dim)
     else:
         network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
@@ -354,8 +357,10 @@ def main():
         metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"]))
         ckpt = {
             "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
+            "opt_state": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].opt_state)),
             "config": config,
             "metrics": metrics_i,
+            "completed_updates": config["num_updates"],
         }
         with open(f"checkpoints/fcp_n{args.num_agents}x{args.num_unseen}_{args.xplay_mode}_seed{seed}.pkl", "wb") as f:
             pickle.dump(ckpt, f)

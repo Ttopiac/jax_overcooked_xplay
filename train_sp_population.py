@@ -17,7 +17,7 @@ import optax
 from flax.training.train_state import TrainState
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -38,7 +38,10 @@ def make_parallel_sp_train(config):
 
     encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
-    if encoder.obs_shape is not None:
+    obs_enc = config.get("obs_encoding", "egocentric")
+    if obs_enc == "pixel":
+        network = IMPALACNNActorCritic(action_dim=action_dim)
+    elif encoder.obs_shape is not None:
         network = CNNActorCritic(action_dim=action_dim)
     else:
         network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
@@ -179,12 +182,160 @@ def make_parallel_sp_train(config):
 
         return {
             "final_params": final_state[0].params,
+            "final_opt_state": final_state[0].opt_state,
             "ckpt_params": final_state[4],
             "ckpt_rewards": final_state[5],
             "metrics": metrics,
         }
 
     return jax.jit(jax.vmap(train_single_agent))
+
+
+def make_parallel_sp_resume(config):
+    """Like make_parallel_sp_train, but initializes from loaded params/opt_state."""
+    num_agents = config["num_agents"]
+    envs = [Overcooked(layout=overcooked_layouts[name], num_agents=num_agents, random_start_pos=config.get("random_start_pos", False))
+            for name in LAYOUT_NAMES]
+    agent_names = envs[0].agents
+    action_dim = envs[0].action_space(agent_names[0]).n
+    n_layouts = len(LAYOUT_NAMES)
+    n_env_l = config["num_envs_per_layout"]
+    n_env_total = n_env_l * n_layouts
+
+    encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
+    reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
+    obs_enc = config.get("obs_encoding", "egocentric")
+    if obs_enc == "pixel":
+        network = IMPALACNNActorCritic(action_dim=action_dim)
+    elif encoder.obs_shape is not None:
+        network = CNNActorCritic(action_dim=action_dim)
+    else:
+        network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
+
+    num_updates = config["num_updates"]
+    num_ckpts = config["num_checkpoints"]
+    ck_interval = max(1, num_updates // num_ckpts)
+    tx = optax.chain(optax.clip_by_global_norm(0.5), optax.adam(config["lr"], eps=1e-5))
+
+    def train_from_state(rng, init_params, init_opt_state):
+        train_state = TrainState(
+            step=0, apply_fn=network.apply, params=init_params,
+            tx=tx, opt_state=init_opt_state,
+        )
+
+        all_env_states = []
+        all_obs = []
+        for env in envs:
+            rng, env_rng = jax.random.split(rng)
+            env_rngs = jax.random.split(env_rng, n_env_l)
+            obs, state = jax.vmap(env.reset)(env_rngs)
+            all_obs.append(obs)
+            all_env_states.append(state)
+        all_env_states = tuple(all_env_states)
+        all_obs = tuple(all_obs)
+
+        ckpt_params = jax.tree.map(
+            lambda p: jnp.zeros((num_ckpts, *p.shape)), train_state.params
+        )
+        ckpt_rewards = jnp.zeros(num_ckpts)
+
+        def _update_step(runner_state, update_idx):
+            train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards = runner_state
+
+            all_agent_traj = []
+            all_sparse = []
+            new_states = []
+            new_obs_list = []
+
+            for layout_i, env in enumerate(envs):
+                def _env_step(carry, inner_step, _env=env):
+                    env_state, obs, rng = carry
+                    rng, action_rng, step_rng = jax.random.split(rng, 3)
+                    action_rngs = jax.random.split(action_rng, num_agents)
+                    transitions = []
+                    actions_list = []
+                    for k in range(num_agents):
+                        obs_k = encoder.encode(obs, env_state, k, n_env_l)
+                        pi, val = network.apply(train_state.params, obs_k)
+                        a = pi.sample(seed=action_rngs[k])
+                        lp = pi.log_prob(a)
+                        transitions.append((obs_k, a, lp, val))
+                        actions_list.append(a)
+                    actions_dict = {agent_names[k]: actions_list[k] for k in range(num_agents)}
+                    step_rngs = jax.random.split(step_rng, n_env_l)
+                    next_obs, next_state, rewards, dones, infos = jax.vmap(_env.step)(
+                        step_rngs, env_state, actions_dict
+                    )
+                    step_count = (update_idx * config["num_steps"] + inner_step) * n_env_total
+                    done_all = dones["__all__"]
+                    trans_list = []
+                    for k in range(num_agents):
+                        obs_k, a_k, lp_k, val_k = transitions[k]
+                        reward_k = reward_shaper.compute(rewards, infos, agent_names[k], step_count)
+                        trans_list.append(Transition(obs_k, a_k, reward_k, done_all, lp_k, val_k))
+                    stacked = jax.tree.map(lambda *xs: jnp.stack(xs), *trans_list)
+                    sparse_r = rewards[agent_names[0]]
+                    return (next_state, next_obs, rng), (stacked, sparse_r)
+
+                rng, scan_rng = jax.random.split(rng)
+                carry, (traj_stacked, sparse_r) = jax.lax.scan(
+                    _env_step, (all_env_states[layout_i], all_obs[layout_i], scan_rng),
+                    jnp.arange(config["num_steps"]),
+                )
+                new_states.append(carry[0])
+                new_obs_list.append(carry[1])
+                traj_flat = jax.tree.map(lambda x: x.reshape(x.shape[0], -1, *x.shape[3:]), traj_stacked)
+                all_agent_traj.append(traj_flat)
+                all_sparse.append(sparse_r)
+
+            all_env_states = tuple(new_states)
+            all_obs = tuple(new_obs_list)
+            traj_batch = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=1), *all_agent_traj)
+
+            all_last_vals = []
+            for layout_i in range(len(envs)):
+                for k in range(num_agents):
+                    o = encoder.encode(all_obs[layout_i], all_env_states[layout_i], k, n_env_l)
+                    _, lv = network.apply(train_state.params, o)
+                    all_last_vals.append(lv)
+            last_val = jnp.concatenate(all_last_vals)
+
+            advantages, returns = compute_gae(traj_batch, last_val, config["gamma"], config["gae_lambda"])
+            flat_batch = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), traj_batch)
+            flat_adv = advantages.reshape(-1)
+            flat_ret = returns.reshape(-1)
+
+            rng, update_rng = jax.random.split(rng)
+            train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
+
+            mean_reward = jnp.mean(traj_batch.reward.sum(axis=0))
+            sparse_all = jnp.concatenate(all_sparse, axis=1)
+            mean_sparse = jnp.mean(sparse_all.sum(axis=0))
+            ck_idx = jnp.clip(update_idx // ck_interval, 0, num_ckpts - 1)
+            is_boundary = (update_idx % ck_interval == 0)
+            ckpt_params = jax.tree.map(
+                lambda ck, p: ck.at[ck_idx].set(jnp.where(is_boundary, p, ck[ck_idx])),
+                ckpt_params, train_state.params,
+            )
+            ckpt_rewards = ckpt_rewards.at[ck_idx].set(
+                jnp.where(is_boundary, mean_reward, ckpt_rewards[ck_idx])
+            )
+            return (
+                train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards
+            ), {"mean_reward": mean_reward, "mean_sparse_reward": mean_sparse}
+
+        init_state = (train_state, all_env_states, all_obs, rng, ckpt_params, ckpt_rewards)
+        final_state, metrics = jax.lax.scan(_update_step, init_state, jnp.arange(num_updates))
+
+        return {
+            "final_params": final_state[0].params,
+            "final_opt_state": final_state[0].opt_state,
+            "ckpt_params": final_state[4],
+            "ckpt_rewards": final_state[5],
+            "metrics": metrics,
+        }
+
+    return jax.jit(jax.vmap(train_from_state))
 
 
 def get_config(args):
@@ -246,7 +397,9 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8,
                         help="Number of agents to train in parallel per GPU batch")
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
-                        choices=["egocentric", "full"])
+                        choices=["egocentric", "full", "pixel"])
+    parser.add_argument("--resume", type=str, default=None,
+                        help="Resume training from checkpoint (comma-sep paths per seed, or dir)")
     parser.add_argument("--reward-mode", type=str, default="originaler",
                         choices=["shaped", "sparse", "originaler"])
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
@@ -267,13 +420,45 @@ def main():
         f"(batch_size={batch_size}, {num_batches} batches)"
     )
 
+    # Resume support
+    resuming = args.resume is not None
+    loaded_params_per_seed = {}
+    loaded_opt_state_per_seed = {}
+    if resuming:
+        for seed in seeds:
+            ckpt_path = f"{args.resume}/sp_pop_seed{seed}.pkl" if os.path.isdir(args.resume) else f"checkpoints/sp_pop_seed{seed}.pkl"
+            print(f"  Loading resume checkpoint: {ckpt_path}")
+            with open(ckpt_path, "rb") as f:
+                ckpt_data = pickle.load(f)
+            loaded_params_per_seed[seed] = ckpt_data["final_params"]
+            loaded_opt_state_per_seed[seed] = ckpt_data["final_opt_state"]
+            prev_updates = ckpt_data.get("completed_updates", 0)
+        remaining = config["num_updates"] - prev_updates
+        if remaining <= 0:
+            print(f"  Already completed {prev_updates} updates (target {config['num_updates']}). Nothing to do.")
+            return
+        print(f"  Resuming: {prev_updates} done, {remaining} remaining")
+        config["num_updates"] = remaining
+
     # Flatten all seeds × pop_size into one array of RNGs
-    train_fn = make_parallel_sp_train(config)
     all_rngs = []
     for seed in seeds:
         base_rng = jax.random.PRNGKey(seed)
         all_rngs.append(jax.random.split(base_rng, pop_size))
     all_rngs = jnp.concatenate(all_rngs)  # (total_agents,)
+
+    if resuming:
+        train_fn = make_parallel_sp_resume(config)
+        # Stack loaded params/opt_state for all agents
+        all_init_params = []
+        all_init_opt_state = []
+        for seed in seeds:
+            all_init_params.append(loaded_params_per_seed[seed])
+            all_init_opt_state.append(loaded_opt_state_per_seed[seed])
+        all_init_params = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=0), *all_init_params)
+        all_init_opt_state = jax.tree.map(lambda *xs: jnp.concatenate(xs, axis=0), *all_init_opt_state)
+    else:
+        train_fn = make_parallel_sp_train(config)
 
     # Train in batches to fit in VRAM
     all_results = []
@@ -287,7 +472,12 @@ def main():
         print(f"  Batch {batch_idx+1}/{num_batches}: agents {b_start}-{b_end-1} "
               f"({actual_bs} agents)")
 
-        batch_result = train_fn(batch_rngs)
+        if resuming:
+            batch_params = jax.tree.map(lambda x: x[b_start:b_end], all_init_params)
+            batch_opt_state = jax.tree.map(lambda x: x[b_start:b_end], all_init_opt_state)
+            batch_result = train_fn(batch_rngs, batch_params, batch_opt_state)
+        else:
+            batch_result = train_fn(batch_rngs)
         # Move results to CPU and explicitly free GPU memory
         batch_result_cpu = jax.device_get(batch_result)
         del batch_result
@@ -322,13 +512,20 @@ def main():
         [r["metrics"]["mean_reward"] for r in all_results], axis=0
     )
 
+    merged_final_opt_state = jax.tree.map(
+        lambda *xs: np.concatenate(xs, axis=0),
+        *[r["final_opt_state"] for r in all_results]
+    )
+
     os.makedirs("checkpoints", exist_ok=True)
     for si, seed in enumerate(seeds):
         start, end = si * pop_size, (si + 1) * pop_size
         ckpt = {
             "final_params": jax.tree.map(lambda x: x[start:end], merged_final_params),
+            "final_opt_state": jax.tree.map(lambda x: x[start:end], merged_final_opt_state),
             "ckpt_params": jax.tree.map(lambda x: x[start:end], merged_ckpt_params),
             "ckpt_rewards": merged_ckpt_rewards[start:end],
+            "completed_updates": args.total_timesteps // (args.num_steps * len(LAYOUT_NAMES) * args.num_envs_per_layout),
             "config": config,
         }
         ckpt_path = f"checkpoints/sp_pop_seed{seed}.pkl"

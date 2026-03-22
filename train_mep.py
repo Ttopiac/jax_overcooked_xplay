@@ -19,7 +19,7 @@ import optax
 from flax.training.train_state import TrainState
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -40,7 +40,10 @@ def make_mep_pop_train(config):
 
     encoder = ObsEncoder(mode=config.get("obs_encoding", "egocentric"))
     reward_shaper = RewardShaper(mode=config["reward_mode"], reward_shaping_factor=config["reward_shaping_factor"], reward_shaping_horizon=config["reward_shaping_horizon"])
-    if encoder.obs_shape is not None:
+    obs_enc = config.get("obs_encoding", "egocentric")
+    if obs_enc == "pixel":
+        network = IMPALACNNActorCritic(action_dim=action_dim)
+    elif encoder.obs_shape is not None:
         network = CNNActorCritic(action_dim=action_dim)
     else:
         network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
@@ -627,9 +630,11 @@ def main():
             ego_metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], ego_results["metrics"]))
             ckpt = {
                 "ego_params": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["train_state"].params)),
+                "ego_opt_state": jax.device_get(jax.tree.map(lambda x: x[i], ego_results["train_state"].opt_state)),
                 "pop_params": jax.device_get(pop_all_params[seed]),
                 "config": config,
                 "ego_metrics": ego_metrics_i,
+                "completed_updates": config["ego_num_updates"],
             }
             with open(f"checkpoints/mep{args.pop_size}_seed{seed}.pkl", "wb") as f:
                 pickle.dump(ckpt, f)

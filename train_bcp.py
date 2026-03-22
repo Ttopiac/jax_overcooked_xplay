@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp
 from overcooked_env import Overcooked, overcooked_layouts
 
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 from ppo import Transition, compute_gae, ppo_update, create_train_state
 from reward_shaping import RewardShaper
@@ -25,7 +25,7 @@ from train_bc import BC_HIDDEN_DIMS, BC_LAYOUTS
 BCP_JAXMARL_LAYOUTS = ["cramped_room", "asymm_advantages", "coord_ring"]
 
 
-def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc_agents):
+def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc_agents, bc_encoder=None):
     num_agents = config["num_agents"]
     num_unseen = config["num_unseen"]
     num_ego = num_agents - num_unseen
@@ -87,25 +87,30 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
                     rng, action_rng, step_rng = jax.random.split(rng, 3)
                     action_rngs = jax.random.split(action_rng, num_agents)
 
-                    all_obs_enc = [encoder.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
+                    # Ego obs (pixel/full/egocentric depending on config)
+                    ego_obs_enc = [encoder.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
+                    # BC partner obs (always egocentric if bc_encoder provided)
+                    _bc_enc = bc_encoder if bc_encoder is not None else encoder
+                    bc_obs_enc = [_bc_enc.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
 
                     ego_transitions = []
                     actions_list = []
 
                     # Ego/clone agents
                     for k in range(num_ego):
-                        pi, val = ego_network.apply(train_state.params, all_obs_enc[k])
+                        pi, val = ego_network.apply(train_state.params, ego_obs_enc[k])
                         a = pi.sample(seed=action_rngs[k])
                         lp = pi.log_prob(a)
-                        ego_transitions.append((all_obs_enc[k], a, lp, val))
+                        ego_transitions.append((ego_obs_enc[k], a, lp, val))
                         actions_list.append(a)
 
                     # Partner agents: BC or self-play based on bc_factor
                     # (different BC partner per env, matching multiHRI)
+                    # BC partners use bc_obs_enc (egocentric), self-play uses ego_obs_enc
                     for j in range(num_unseen):
                         p_params = jax.tree.map(lambda x: x[j], bc_partner_params)  # (n_env_l, ...)
-                        bc_pi, _ = jax.vmap(bc_network.apply)(p_params, all_obs_enc[num_ego + j])
-                        sp_pi, _ = ego_network.apply(train_state.params, all_obs_enc[num_ego + j])
+                        bc_pi, _ = jax.vmap(bc_network.apply)(p_params, bc_obs_enc[num_ego + j])
+                        sp_pi, _ = ego_network.apply(train_state.params, ego_obs_enc[num_ego + j])
                         a_bc = bc_pi.sample(seed=action_rngs[num_ego + j])
                         a_sp = sp_pi.sample(seed=action_rngs[num_ego + j])
                         a = jnp.where(use_bc, a_bc, a_sp)
@@ -207,6 +212,7 @@ def get_config(args):
         "reward_shaping_factor": args.reward_shaping_factor,
         "reward_shaping_horizon": args.reward_shaping_horizon,
         "bc_anneal_horizon": args.bc_anneal_horizon,
+        "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
     }
 
 
@@ -235,6 +241,8 @@ def main():
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     parser.add_argument("--bc-anneal-horizon", type=int, default=8000)
+    parser.add_argument("--obs-encoding", type=str, default="egocentric",
+                        choices=["egocentric", "full", "pixel"])
     setup_wandb_args(parser)
     args = parser.parse_args()
 
@@ -266,14 +274,19 @@ def main():
     reward_shaper = RewardShaper(mode=config["reward_mode"],
                                  reward_shaping_factor=config["reward_shaping_factor"],
                                  reward_shaping_horizon=config["reward_shaping_horizon"])
-    if encoder.obs_shape is not None:
+    obs_enc = config.get("obs_encoding", "egocentric")
+    if obs_enc == "pixel":
+        ego_network = IMPALACNNActorCritic(action_dim=6)
+    elif encoder.obs_shape is not None:
         ego_network = CNNActorCritic(action_dim=6)
     else:
         ego_network = ActorCritic(action_dim=6, hidden_dims=config["hidden_dims"])
     # BC network always uses MLP (BC was trained with egocentric encoding)
     bc_network = ActorCritic(action_dim=6, hidden_dims=bc_hidden_dims)
+    # BC partners need egocentric encoder when ego uses a different encoding
+    bc_encoder = ObsEncoder(mode="egocentric") if obs_enc != "egocentric" else None
 
-    bcp_train_fn = make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, total_bc)
+    bcp_train_fn = make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, total_bc, bc_encoder=bc_encoder)
     multi_bcp_fn = jax.jit(jax.vmap(bcp_train_fn))
 
     rngs = jnp.stack([jax.random.PRNGKey(s + 1000) for s in seeds])
@@ -293,7 +306,9 @@ def main():
         metrics_i = jax.device_get(jax.tree.map(lambda x: x[i], results["metrics"]))
         ckpt = {
             "params": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].params)),
+            "opt_state": jax.device_get(jax.tree.map(lambda x: x[i], results["train_state"].opt_state)),
             "config": config, "metrics": metrics_i,
+            "completed_updates": config["num_updates"],
         }
         with open(f"checkpoints/bcp_n{args.num_agents}x{args.num_unseen}_{args.xplay_mode}_seed{seed}.pkl", "wb") as f:
             pickle.dump(ckpt, f)

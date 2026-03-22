@@ -17,7 +17,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from overcooked_env import Overcooked, overcooked_layouts
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 from evaluate import evaluate_episode
 
@@ -98,7 +98,9 @@ def main():
         config = pop_data["config"]
         obs_enc = config.get("obs_encoding", "egocentric")
         encoder = ObsEncoder(mode=obs_enc)
-        if obs_enc == "full":
+        if obs_enc == "pixel":
+            network = IMPALACNNActorCritic(action_dim=6)
+        elif obs_enc == "full":
             network = CNNActorCritic(action_dim=6)
         else:
             hidden_dims = config["hidden_dims"] if "hidden_dims" in config else (256, 256)

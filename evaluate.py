@@ -23,7 +23,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from overcooked_env import Overcooked, overcooked_layouts
-from networks import ActorCritic, CNNActorCritic
+from networks import ActorCritic, CNNActorCritic, IMPALACNNActorCritic
 from obs_encoding import ObsEncoder
 
 LAYOUT_NAMES = ["cramped_room", "asymm_advantages", "coord_ring", "forced_coord", "counter_circuit"]
@@ -411,6 +411,8 @@ def main():
         return "egocentric"
 
     def _make_network(hidden_dims, obs_encoding="egocentric"):
+        if obs_encoding == "pixel":
+            return IMPALACNNActorCritic(action_dim=6)
         if obs_encoding == "full":
             return CNNActorCritic(action_dim=6)
         return ActorCritic(action_dim=6, hidden_dims=hidden_dims)

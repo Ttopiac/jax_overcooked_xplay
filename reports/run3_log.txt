@@ -1,0 +1,3097 @@
+==========================================
+ Run 3 — Per-layout H/M/L + eval-based MEP sampling
+==========================================
+All Run 2 prerequisites found.
+
+=== Step 0: Evaluate SP pop per layout ===
+[EVAL-PER-LAYOUT] seed 0: loading checkpoints/sp_pop_seed0.pkl
+  16 agents × 35 ckpts = 560 total
+  Layout 1/5: cramped_room
+    mean=249.0, min=0.0, max=260.0
+  Layout 2/5: asymm_advantages
+    mean=480.4, min=0.0, max=500.0
+  Layout 3/5: coord_ring
+    mean=228.0, min=0.0, max=280.0
+  Layout 4/5: forced_coord
+    mean=187.5, min=0.0, max=220.0
+  Layout 5/5: counter_circuit
+    mean=131.6, min=0.0, max=180.0
+  layout_scores shape: (560, 5)
+  Done in 31.0s
+  Saved to checkpoints/sp_pop_seed0_layout_scores.pkl
+[EVAL-PER-LAYOUT] seed 1: loading checkpoints/sp_pop_seed1.pkl
+  16 agents × 35 ckpts = 560 total
+  Layout 1/5: cramped_room
+    mean=247.8, min=0.0, max=260.0
+  Layout 2/5: asymm_advantages
+    mean=478.7, min=0.0, max=500.0
+  Layout 3/5: coord_ring
+    mean=224.8, min=0.0, max=280.0
+  Layout 4/5: forced_coord
+    mean=188.0, min=0.0, max=220.0
+  Layout 5/5: counter_circuit
+    mean=125.0, min=0.0, max=200.0
+  layout_scores shape: (560, 5)
+  Done in 29.2s
+  Saved to checkpoints/sp_pop_seed1_layout_scores.pkl
+[EVAL-PER-LAYOUT] seed 2: loading checkpoints/sp_pop_seed2.pkl
+  16 agents × 35 ckpts = 560 total
+  Layout 1/5: cramped_room
+    mean=248.7, min=0.0, max=260.0
+  Layout 2/5: asymm_advantages
+    mean=480.2, min=0.0, max=500.0
+  Layout 3/5: coord_ring
+    mean=216.1, min=0.0, max=280.0
+  Layout 4/5: forced_coord
+    mean=187.6, min=0.0, max=201.2
+  Layout 5/5: counter_circuit
+    mean=136.0, min=0.0, max=180.0
+  layout_scores shape: (560, 5)
+  Done in 29.5s
+  Saved to checkpoints/sp_pop_seed2_layout_scores.pkl
+[EVAL-PER-LAYOUT] seed 3: loading checkpoints/sp_pop_seed3.pkl
+  16 agents × 35 ckpts = 560 total
+  Layout 1/5: cramped_room
+    mean=249.4, min=0.0, max=260.0
+  Layout 2/5: asymm_advantages
+    mean=478.5, min=0.0, max=500.0
+  Layout 3/5: coord_ring
+    mean=217.4, min=0.0, max=280.0
+  Layout 4/5: forced_coord
+    mean=187.2, min=0.0, max=200.0
+  Layout 5/5: counter_circuit
+    mean=133.9, min=0.0, max=180.0
+  layout_scores shape: (560, 5)
+  Done in 29.1s
+  Saved to checkpoints/sp_pop_seed3_layout_scores.pkl
+[EVAL-PER-LAYOUT] seed 4: loading checkpoints/sp_pop_seed4.pkl
+  16 agents × 35 ckpts = 560 total
+  Layout 1/5: cramped_room
+    mean=248.1, min=0.0, max=260.0
+  Layout 2/5: asymm_advantages
+    mean=479.6, min=0.0, max=500.0
+  Layout 3/5: coord_ring
+    mean=224.3, min=0.0, max=280.0
+  Layout 4/5: forced_coord
+    mean=187.5, min=0.0, max=200.0
+  Layout 5/5: counter_circuit
+    mean=123.8, min=0.0, max=180.0
+  layout_scores shape: (560, 5)
+  Done in 29.5s
+  Saved to checkpoints/sp_pop_seed4_layout_scores.pkl
+
+=== Step 1: MEP-16 Ego (eval-based per-layout sampling) ===
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/nathan/.netrc.
+wandb: Currently logged in as: ttopiac (chli4608) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run r9ynvzgc
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_085652-r9ynvzgc
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep16_ego_seed0
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/r9ynvzgc
+wandb: updating run metadata
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▁▇▇▅▆▆▆▆▆▆▆▆▆▆▇▇▆▇▇▇▇▇▇▆▇▇▇▇▇█▇▇▇▇▇▇██▇
+wandb: ego/mean_sparse_reward ▂▁▆▄▂▃▅▄▄▁▃▃▅▄█▆▄▃▅▅▂▆▅▆▆▆▆▅▅▄▅▆▅▄▆▄█▇▆▅
+wandb:         ego/total_loss ▁▄▇▇▄▄▇▄▅█▄▄▄▇▄▇█▅▅▅▄▇▅▄▄▅▅█▇▅▅▅▇▇▅▅▅█▅▄
+wandb:                 update ▁▁▁▂▃▄▅▅▅▅▇██▁▂▂▃▃▄▅▆▇▇▇██▁▁▂▂▃▃▄▄▄▅▆▇██
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 231.63335
+wandb: ego/mean_sparse_reward 202.00002
+wandb:         ego/total_loss 5.56004
+wandb:             ego_time_s 5090.16818
+wandb:       final_ego_reward 231.63335
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep16_ego_seed0 at: https://wandb.ai/chli4608/overcooked-xplay/runs/r9ynvzgc
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_085652-r9ynvzgc/logs
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_085654-itz21grp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep16_ego_seed1
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/itz21grp
+wandb: updating run metadata; uploading summary
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▃▄▅▆█▅▅▇▄▅▆▅▅▆▆▇▄▄▆▄▆▅▅▅▆▅▅▆▅▆█▇▆▇▅▆▅▆█
+wandb: ego/mean_sparse_reward ▁▃▅▅▆▅▆▆▆▆▆▆▇▅▆▅▆▇▇▆▆▆▆▆▆▆▆▇▇▇▆▆█▆▆▇▆▆▆▇
+wandb:         ego/total_loss ▁▃▃▃▄▄▄▄▄▄▅██▄▅▄▅▄▄▅▅▄▄▄▄▇▄▄▄█▅▅▄▄▄▄▄▄▅▄
+wandb:                 update ▁▁▂▂▃▃▃▄▅▆▇▇▇██▂▂▂▃▃▅▅▅▆▆▇██▁▂▂▃▄▄▅▆▇▇▇█
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 230.44287
+wandb: ego/mean_sparse_reward 203.42857
+wandb:         ego/total_loss 4.99281
+wandb:             ego_time_s 5090.16818
+wandb:       final_ego_reward 230.44287
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep16_ego_seed1 at: https://wandb.ai/chli4608/overcooked-xplay/runs/itz21grp
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_085654-itz21grp/logs
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_085656-9f2ry3q4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep16_ego_seed2
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/9f2ry3q4
+wandb: updating run metadata; uploading summary
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▁▂▄▇▇▇▇▇▇▇▇▇▇▇▇▇█▇▇▇█▇▇▇▇▇██▇█▇█▇██▇▇▇█
+wandb: ego/mean_sparse_reward ▁▂▄▄▆▅▆▅▅▅▅▆▆▅▆▇▆▆▇▆▇▇▇▇▇█▇▇▇▇▇▇▆▇▇▆▇▇▇▇
+wandb:         ego/total_loss ▁▁▁▂▃▅▅▇▅▄▅▅▄▅█▅▅▅▅▅▅▅▅▅█▅█▅██▅▅▅▅▅▅▇█▅▅
+wandb:                 update ▁▂▂▂▂▅▇██▁▁▂▂▃▃▃▄▄▄▆▇▇█▁▁▂▂▃▃▃▃▃▃▄▄▅▅▆▇█
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 245.00716
+wandb: ego/mean_sparse_reward 204.00002
+wandb:         ego/total_loss 5.94913
+wandb:             ego_time_s 5090.16818
+wandb:       final_ego_reward 245.00716
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep16_ego_seed2 at: https://wandb.ai/chli4608/overcooked-xplay/runs/9f2ry3q4
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_085656-9f2ry3q4/logs
+[MEP] Phase 1: SKIPPED (--skip-pop). Loading existing pop checkpoints.
+  Loaded checkpoints/mep16_pop_seed0.pkl
+  Loaded checkpoints/mep16_pop_seed1.pkl
+  Loaded checkpoints/mep16_pop_seed2.pkl
+  Loaded checkpoints/mep16_pop_seed3.pkl
+  Loaded checkpoints/mep16_pop_seed4.pkl
+[MEP] Phase 2: ego_seeds=[0, 1, 2], 952 updates, 100M (3 seeds vmapped)
+  seed 0: final ego reward = 231.6333
+  seed 1: final ego reward = 230.4429
+  seed 2: final ego reward = 245.0072
+[MEP] Phase 2 done in 5090.2s (84.8 min)
+  Saved seed 0 to checkpoints/mep16_seed0.pkl
+  Saved seed 1 to checkpoints/mep16_seed1.pkl
+  Saved seed 2 to checkpoints/mep16_seed2.pkl
+--- Eval: MEP-16 ego self-play ---
+[EVAL] Self-play evaluation (ego): checkpoints/mep16_seed0.pkl
+  mean=104.0, {'cramped_room': 240.0, 'asymm_advantages': 40.0, 'coord_ring': 40.0, 'forced_coord': 200.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/mep16_ego_selfplay_seed0.json
+[EVAL] Self-play evaluation (ego): checkpoints/mep16_seed1.pkl
+  mean=196.0, {'cramped_room': 260.0, 'asymm_advantages': 320.0, 'coord_ring': 200.0, 'forced_coord': 200.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/mep16_ego_selfplay_seed1.json
+[EVAL] Self-play evaluation (ego): checkpoints/mep16_seed2.pkl
+  mean=198.1, {'cramped_room': 260.0, 'asymm_advantages': 260.0, 'coord_ring': 180.0, 'forced_coord': 200.0, 'counter_circuit': 90.41666666666667}
+  Saved to reports/eval_results/mep16_ego_selfplay_seed2.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+=== Step 2: MEP-8 Ego (per-env partner sampling) ===
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/nathan/.netrc.
+wandb: Currently logged in as: ttopiac (chli4608) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run 4p8eo4oy
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_095843-4p8eo4oy
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep8_ego_seed0
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/4p8eo4oy
+wandb: updating run metadata
+wandb: uploading requirements.txt
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▄▇▅▆▅▆▆▇▆▆▅▆▆▆▅▅▇▆▆▇▆▆▆▆▇▆▆██▆▆▇▆▆▇▆▆█▆
+wandb: ego/mean_sparse_reward ▁▄▅▅▆▆▅▇▆▆▆▇▆▆▆▅▆▆▇▆▆▆▇▆▇▆█▆▆▆▆▇▇▇▇▇▅▆▆▆
+wandb:         ego/total_loss ▁▂▂▃▅▄▄▃▃█▃▄▃▃▃▄▆▄▄▃▅▃▃▃▃▇▃█▃▃▅▃▃▅▃▃▇▃▃▃
+wandb:                 update ▁▁▂▃▃▄▄▄▅▅▆▆▆█▂▃▃▄▄▅▆▇▇▇████▁▁▂▂▂▃▃▆▇▇▇▇
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 249.35715
+wandb: ego/mean_sparse_reward 220.57144
+wandb:         ego/total_loss 5.31982
+wandb:             ego_time_s 3654.83448
+wandb:       final_ego_reward 249.35715
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep8_ego_seed0 at: https://wandb.ai/chli4608/overcooked-xplay/runs/4p8eo4oy
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_095843-4p8eo4oy/logs
+wandb: setting up run d3mrx6w9
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_095846-d3mrx6w9
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep8_ego_seed1
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/d3mrx6w9
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-summary.json; uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▆▆▇▆▇█▇▇▇▇▇▇▇▇▇▇▇▇█▇▇▇█▇█▇▇█▇█▇▇▇▇█▇▇▇█
+wandb: ego/mean_sparse_reward ▁▃▃▃▃▄▄▁▇▁▃▃▄▄▂▅▃▄▃▃▄▃▅▅▄▆▅▄▄▃▆▅▅▅▆▄▅█▆▆
+wandb:         ego/total_loss ▁▃▅▄▅▄▄▄▄▄▄▆▄▆▇▄▄▄▄▄▄▅▄█▄▄▄▄▄▄▄▄▄▄▄▆▅▄▄▇
+wandb:                 update ▁▁▁▂▂▃▃▃▄▄▅▅▆▇▇██▂▂▂▃▃▅▅▅▆▇▁▂▂▄▅▅▆▆▇▇▇▇█
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 248.66905
+wandb: ego/mean_sparse_reward 219.14287
+wandb:         ego/total_loss 5.57472
+wandb:             ego_time_s 3654.83448
+wandb:       final_ego_reward 248.66905
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep8_ego_seed1 at: https://wandb.ai/chli4608/overcooked-xplay/runs/d3mrx6w9
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_095846-d3mrx6w9/logs
+wandb: setting up run o7tnob69
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_095848-o7tnob69
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mep8_ego_seed2
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/o7tnob69
+wandb: updating run metadata; uploading summary
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        ego/mean_reward ▁▂▂▁▂▆▅▆▅▄▄▄▅█▄▄▃▄▇▅▁▃▄▂▄▄▄▅▅▅▄▄▅▄▃▃▆▆▄█
+wandb: ego/mean_sparse_reward ▁▆▅▆▄▆▆▇▇▆▇▆▆▇▇▇▇▇▆▆█▇▆▆▇▆▆▆▇▆▇▇▇▇▇▆▇▇▇▆
+wandb:         ego/total_loss ▁▂▄▄▃▇▆▃▃▅▅▄▄█▃▄▃▇█▄▃▃▅▃▃▃▃▃▃▅▆▅▃▃▃▃▃▃▃▄
+wandb:                 update ▁▂▂▃▅▆▆▇██▁▁▁▁▁▂▃▃▄▄▇▇████▂▂▂▃▃▃▄▅▅▅▅▆▆▇
+wandb: 
+wandb: Run summary:
+wandb:        ego/mean_reward 260.16193
+wandb: ego/mean_sparse_reward 220.28572
+wandb:         ego/total_loss 6.20547
+wandb:             ego_time_s 3654.83448
+wandb:       final_ego_reward 260.16193
+wandb:                 update 951
+wandb: 
+wandb: 🚀 View run mep8_ego_seed2 at: https://wandb.ai/chli4608/overcooked-xplay/runs/o7tnob69
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_095848-o7tnob69/logs
+[MEP] Phase 1: SKIPPED (--skip-pop). Loading existing pop checkpoints.
+  Loaded checkpoints/mep8_pop_seed0.pkl
+  Loaded checkpoints/mep8_pop_seed1.pkl
+  Loaded checkpoints/mep8_pop_seed2.pkl
+  Loaded checkpoints/mep8_pop_seed3.pkl
+  Loaded checkpoints/mep8_pop_seed4.pkl
+[MEP] Phase 2: ego_seeds=[0, 1, 2], 952 updates, 100M (3 seeds vmapped)
+  seed 0: final ego reward = 249.3571
+  seed 1: final ego reward = 248.6691
+  seed 2: final ego reward = 260.1619
+[MEP] Phase 2 done in 3654.8s (60.9 min)
+  Saved seed 0 to checkpoints/mep8_seed0.pkl
+  Saved seed 1 to checkpoints/mep8_seed1.pkl
+  Saved seed 2 to checkpoints/mep8_seed2.pkl
+--- Eval: MEP-8 ego self-play ---
+[EVAL] Self-play evaluation (ego): checkpoints/mep8_seed0.pkl
+  mean=220.9, {'cramped_room': 240.0, 'asymm_advantages': 464.375, 'coord_ring': 220.0, 'forced_coord': 180.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/mep8_ego_selfplay_seed0.json
+[EVAL] Self-play evaluation (ego): checkpoints/mep8_seed1.pkl
+  mean=220.0, {'cramped_room': 260.0, 'asymm_advantages': 460.0, 'coord_ring': 200.0, 'forced_coord': 180.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/mep8_ego_selfplay_seed1.json
+[EVAL] Self-play evaluation (ego): checkpoints/mep8_seed2.pkl
+  mean=152.2, {'cramped_room': 260.0, 'asymm_advantages': 340.0, 'coord_ring': 0.0, 'forced_coord': 161.25, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/mep8_ego_selfplay_seed2.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+=== Step 3: BCP (per-env partner sampling) ===
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/nathan/.netrc.
+wandb: Currently logged in as: ttopiac (chli4608) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run qg61zh4z
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_101931-qg61zh4z
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run bcp_n2x1_hetero_seed0
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/qg61zh4z
+wandb: updating run metadata
+wandb: uploading history steps 0-6347, summary
+wandb: 
+wandb: Run history:
+wandb:          train/bc_factor ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:        train/mean_reward ▁▅▇██▇▇████▇▇███▇██████████████████▇████
+wandb: train/mean_sparse_reward ▁▅▆▇▇███▇▇█████▇█████████████▇███▇██████
+wandb:         train/total_loss ▁▃▅▅▅▅▇▅▅▅▅▅▅█▅▅▅▅▅▇█▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅
+wandb:                   update ▁▂▂▂▃▄▆▇▇▁▂▃▃▄▅▆▆▇▇█▁▁▂▂▃▄▄▅▆▇█▁▁▃▅▅▆▇▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 230.19446
+wandb:             final_sparse 168.25398
+wandb:          train/bc_factor 1
+wandb:        train/mean_reward 230.19446
+wandb: train/mean_sparse_reward 168.25398
+wandb:         train/total_loss 2.46798
+wandb:             train_time_s 1191.21254
+wandb:                   update 1586
+wandb: 
+wandb: 🚀 View run bcp_n2x1_hetero_seed0 at: https://wandb.ai/chli4608/overcooked-xplay/runs/qg61zh4z
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_101931-qg61zh4z/logs
+wandb: setting up run ralc27oa
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_101934-ralc27oa
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run bcp_n2x1_hetero_seed1
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/ralc27oa
+wandb: updating run metadata
+wandb: uploading history steps 0-6347, summary
+wandb: 
+wandb: Run history:
+wandb:          train/bc_factor ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:        train/mean_reward ▁▁▄▆▇▇▇▇▇███▇▇▇▇▇▇▇▇█▇█▇▇▇▇▇▇█▇█▇▇███▇▇▇
+wandb: train/mean_sparse_reward ▁▆▆▇▇▇▇▇▇▇█▇▇▇▇▇███▇███▇██▇██████▇█▇█▇██
+wandb:         train/total_loss ▁▅▄▅▅▇█▅▄▅▇▅▅▅▄▅▅█▇█▅▄▅▅▅██▅▇▅▅▄▅▇█▅▇▅▅█
+wandb:                   update ▁▂▂▂▄▄▄▅▆▆▇▇▇▂▂▃▃▃▃▄▇▁▁▁▂▂▂▃▄▄▅▅▇█▁▄▅▆▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 234.35716
+wandb:             final_sparse 171.58731
+wandb:          train/bc_factor 1
+wandb:        train/mean_reward 234.35716
+wandb: train/mean_sparse_reward 171.58731
+wandb:         train/total_loss 2.45164
+wandb:             train_time_s 1191.21254
+wandb:                   update 1586
+wandb: 
+wandb: 🚀 View run bcp_n2x1_hetero_seed1 at: https://wandb.ai/chli4608/overcooked-xplay/runs/ralc27oa
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_101934-ralc27oa/logs
+wandb: setting up run yautiy67
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_101936-yautiy67
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run bcp_n2x1_hetero_seed2
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/yautiy67
+wandb: updating run metadata
+wandb: uploading history steps 0-6347, summary
+wandb: 
+wandb: Run history:
+wandb:          train/bc_factor ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:        train/mean_reward ▁▂▆▆▆▇▇▇▇▆▆▇▇▇▆▇▇▇▇▇▇▇▇██▇█▇▇▇█▇▇▇▇▇▇▇▇█
+wandb: train/mean_sparse_reward ▁▅▇▇▇▇█▇█▇▇▇▇▇▇▇▇▇▇▇▇███▇████████▇██████
+wandb:         train/total_loss ▁▇▁▂▂▂▂▁▁▁▇▂▁▁▂▂▂▁▁▁▂▂▇▂▂▇▁▇▁▂▇▂▇▂▇▇▇▇▁█
+wandb:                   update ▃▃▄▅▆████▁▃▃▄▅▅▆█▁▂▃▃▄▄▄▅▆▆▆▆█▂▄▅▅▅▅▆▆▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 236.77382
+wandb:             final_sparse 172.85715
+wandb:          train/bc_factor 1
+wandb:        train/mean_reward 236.77382
+wandb: train/mean_sparse_reward 172.85715
+wandb:         train/total_loss 2.75307
+wandb:             train_time_s 1191.21254
+wandb:                   update 1586
+wandb: 
+wandb: 🚀 View run bcp_n2x1_hetero_seed2 at: https://wandb.ai/chli4608/overcooked-xplay/runs/yautiy67
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_101936-yautiy67/logs
+[BCP] N=2, X=1, mode=hetero
+  Loading checkpoints/bc_seed0.pkl
+  Loading checkpoints/bc_seed1.pkl
+  Loading checkpoints/bc_seed2.pkl
+[BCP] Training 3 seeds (1587 updates)
+  seed 0: reward=230.1945, sparse=168.2540
+  seed 1: reward=234.3572, sparse=171.5873
+  seed 2: reward=236.7738, sparse=172.8571
+[BCP] Done in 1191.2s (19.9 min)
+--- Eval: BCP ego self-play ---
+[EVAL] Self-play evaluation (ego): checkpoints/bcp_n2x1_hetero_seed0.pkl
+  mean=62.8, {'cramped_room': 8.333333333333334, 'asymm_advantages': 160.0, 'coord_ring': 20.0}
+  Saved to reports/eval_results/bcp_ego_selfplay_seed0.json
+[EVAL] Self-play evaluation (ego): checkpoints/bcp_n2x1_hetero_seed1.pkl
+  mean=65.7, {'cramped_room': 17.083333333333332, 'asymm_advantages': 20.0, 'coord_ring': 160.0}
+  Saved to reports/eval_results/bcp_ego_selfplay_seed1.json
+[EVAL] Self-play evaluation (ego): checkpoints/bcp_n2x1_hetero_seed2.pkl
+  mean=106.7, {'cramped_room': 0.0, 'asymm_advantages': 280.0, 'coord_ring': 40.0}
+  Saved to reports/eval_results/bcp_ego_selfplay_seed2.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+=== Step 4: FCP (per-env partner sampling) ===
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/nathan/.netrc.
+wandb: Currently logged in as: ttopiac (chli4608) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run qq65kdyj
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_104623-qq65kdyj
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed0
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/qq65kdyj
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▄▆▆▆▆▆▅▆▆▇▆▇▆▇▇▇▇▆▇▇▇███▇██▇▇▇▇██▇▇██▇█
+wandb: train/mean_sparse_reward ▁▆▆▆▆▆▇▆▆▅▆▅▇▇▇▆▇▇▆▇▆▇▇▇▇▇▇▇▇▇▇▇▇████▇██
+wandb:         train/total_loss ▁▂▁▃▃▇▇▃▂▃▂▃▆▇▂▃▂▃▃▂▂▂▂▃▂▂▇▃▇▆▃▂▃▃▃▃▃▃█▃
+wandb:                   update ▁▂▂▃▃▃▄▅▆▆▇▇▇█▁▂▂▂▂▃▃▃▅▅▅▇▇██▁▂▂▃▃▃▄▅▆▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 235.29762
+wandb:             final_sparse 198.09525
+wandb:        train/mean_reward 235.29762
+wandb: train/mean_sparse_reward 198.09525
+wandb:         train/total_loss 6.93906
+wandb:             train_time_s 1567.98817
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed0 at: https://wandb.ai/chli4608/overcooked-xplay/runs/qq65kdyj
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_104623-qq65kdyj/logs
+wandb: setting up run pc0vkzqs
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_104626-pc0vkzqs
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed1
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/pc0vkzqs
+wandb: updating run metadata; uploading summary
+wandb: uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▂▄▆▇▇▇▇▇▇▇▇▇█▇▇▇▇█▇▇██▇███▇████████████
+wandb: train/mean_sparse_reward ▁▃▄▃▃▅▃▅▄▅▅▅▄▅▅▅▄▇▆▅▆▆▆█▆▅▇▅▆▇▇▅▇█▇▅▆▆▇█
+wandb:         train/total_loss ▁▄▆▅▅▅▄▅▅▅▇▇▅▄▅▅▅▅▅▅▅▆▅▅█▅▅▆▅█▅▆▆▅▆▅▅▅▅▅
+wandb:                   update ▁▂▄▄▅▅▅▅▆▆▇███▁▂▂▂▂▃▄▅▆▆▆▇█▁▂▃▃▄▄▄▄▅▇▇▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 229.76906
+wandb:             final_sparse 193.14287
+wandb:        train/mean_reward 229.76906
+wandb: train/mean_sparse_reward 193.14287
+wandb:         train/total_loss 7.35887
+wandb:             train_time_s 1567.98817
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed1 at: https://wandb.ai/chli4608/overcooked-xplay/runs/pc0vkzqs
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_104626-pc0vkzqs/logs
+wandb: setting up run ccel3x84
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260322_104628-ccel3x84
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed2
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/ccel3x84
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▃▃▃▅▇▇▇▇▆▇▇▇▇▇▇█▇▇▇▇█▇▇▇█▇█▇▇█▇▇▇▇██▇█▇
+wandb: train/mean_sparse_reward ▁▂▄▁▅▄▂▄▄▆▄▅▂▄▄▆▆▇▆▅▇▇▇▇▇▆█▄▆▆█▅▆▇▇▄▇██▇
+wandb:         train/total_loss ▁▂▄▅▆▅▆▇▇▅▅█▅▅▅▇▅▅▅█▅▇▅▅▅▅▅▅▅▆▅▅▅▅▅▅▆▇▅▅
+wandb:                   update ▁▂▂▃▄▅▅▅▆▆▆▇▇█▁▂▂▃▃▄▅▅▅▅▅▇▇▇▇█▁▁▂▃▄▄▄▆▆█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 232.83334
+wandb:             final_sparse 197.90477
+wandb:        train/mean_reward 232.83334
+wandb: train/mean_sparse_reward 197.90477
+wandb:         train/total_loss 7.17243
+wandb:             train_time_s 1567.98817
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed2 at: https://wandb.ai/chli4608/overcooked-xplay/runs/ccel3x84
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260322_104628-ccel3x84/logs
+[FCP] N=2, X=1, mode=hetero
+  Loading checkpoints/sp_pop_seed0.pkl + checkpoints/sp_pop_seed0_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=220.0, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Loading checkpoints/sp_pop_seed1.pkl + checkpoints/sp_pop_seed1_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=220.0, L=0.0
+      counter_circuit: H=200.0, L=0.0
+  Loading checkpoints/sp_pop_seed2.pkl + checkpoints/sp_pop_seed2_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=201.2, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Pool shape per seed: (5, 3, ...)
+[FCP] Training 3 seeds (952 updates, 100M)
+  seed 0: reward=235.2976, sparse=198.0952
+  seed 1: reward=229.7691, sparse=193.1429
+  seed 2: reward=232.8333, sparse=197.9048
+[FCP] Done in 1568.0s (26.1 min)
+--- Eval: FCP ego self-play ---
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed0.pkl
+  mean=135.8, {'cramped_room': 234.16666666666666, 'asymm_advantages': 420.0, 'coord_ring': 0.0, 'forced_coord': 7.5, 'counter_circuit': 17.083333333333332}
+  Saved to reports/eval_results/fcp_ego_selfplay_seed0.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed1.pkl
+  mean=135.3, {'cramped_room': 240.0, 'asymm_advantages': 20.0, 'coord_ring': 200.0, 'forced_coord': 160.0, 'counter_circuit': 56.666666666666664}
+  Saved to reports/eval_results/fcp_ego_selfplay_seed1.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed2.pkl
+  mean=14.6, {'cramped_room': 16.25, 'asymm_advantages': 36.666666666666664, 'coord_ring': 20.0, 'forced_coord': 0.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_seed2.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+=== Step 5: Cross-play evaluation ===
+  Evaluating sp vs all partners...
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=117.8
+  Partner_1: mean=162.8
+  Partner_2: mean=112.0
+  Partner_3: mean=144.9
+  Partner_4: mean=152.0
+  Partner_15: mean=152.0
+  Overall mean: 126.0
+  Saved to reports/eval_results/cross_sp_s0_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=36.6
+  Partner_1: mean=104.7
+  Partner_2: mean=115.9
+  Partner_3: mean=17.2
+  Partner_4: mean=1.3
+  Partner_15: mean=46.0
+  Overall mean: 59.0
+  Saved to reports/eval_results/cross_sp_s0_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=127.4
+  Partner_1: mean=15.4
+  Partner_2: mean=184.0
+  Partner_3: mean=4.6
+  Partner_4: mean=123.0
+  Partner_7: mean=159.2
+  Overall mean: 102.3
+  Saved to reports/eval_results/cross_sp_s0_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_sp_s0_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=146.5
+  Partner_1: mean=220.0
+  Partner_2: mean=116.5
+  Partner_3: mean=152.0
+  Partner_4: mean=117.8
+  Partner_15: mean=150.8
+  Overall mean: 136.4
+  Saved to reports/eval_results/cross_sp_s0_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=42.7
+  Partner_1: mean=143.4
+  Partner_2: mean=48.0
+  Partner_3: mean=143.4
+  Partner_4: mean=54.0
+  Partner_15: mean=4.7
+  Overall mean: 85.4
+  Saved to reports/eval_results/cross_sp_s0_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=118.6
+  Partner_1: mean=117.3
+  Partner_2: mean=6.8
+  Partner_3: mean=152.0
+  Partner_4: mean=104.6
+  Partner_7: mean=167.9
+  Overall mean: 121.6
+  Saved to reports/eval_results/cross_sp_s0_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed0.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_sp_s0_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=143.1
+  Partner_1: mean=160.2
+  Partner_2: mean=150.1
+  Partner_3: mean=196.0
+  Partner_4: mean=156.0
+  Partner_15: mean=169.5
+  Overall mean: 148.1
+  Saved to reports/eval_results/cross_sp_s1_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=97.2
+  Partner_1: mean=158.4
+  Partner_2: mean=129.5
+  Partner_3: mean=103.6
+  Partner_4: mean=101.3
+  Partner_15: mean=96.2
+  Overall mean: 119.6
+  Saved to reports/eval_results/cross_sp_s1_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=155.3
+  Partner_1: mean=144.0
+  Partner_2: mean=192.0
+  Partner_3: mean=144.0
+  Partner_4: mean=199.0
+  Partner_7: mean=152.6
+  Overall mean: 150.0
+  Saved to reports/eval_results/cross_sp_s1_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_sp_s1_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=148.0
+  Partner_1: mean=100.6
+  Partner_2: mean=160.2
+  Partner_3: mean=228.0
+  Partner_4: mean=119.0
+  Partner_15: mean=152.0
+  Overall mean: 161.6
+  Saved to reports/eval_results/cross_sp_s1_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=86.5
+  Partner_1: mean=180.0
+  Partner_2: mean=172.2
+  Partner_3: mean=181.7
+  Partner_4: mean=92.0
+  Partner_15: mean=76.2
+  Overall mean: 118.3
+  Saved to reports/eval_results/cross_sp_s1_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=126.4
+  Partner_1: mean=127.2
+  Partner_2: mean=160.0
+  Partner_3: mean=155.0
+  Partner_4: mean=157.0
+  Partner_7: mean=192.0
+  Overall mean: 159.2
+  Saved to reports/eval_results/cross_sp_s1_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed1.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_sp_s1_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=232.7
+  Partner_1: mean=200.0
+  Partner_2: mean=192.0
+  Partner_3: mean=63.0
+  Partner_4: mean=108.7
+  Partner_15: mean=204.0
+  Overall mean: 173.9
+  Saved to reports/eval_results/cross_sp_s2_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=40.0
+  Partner_1: mean=188.0
+  Partner_2: mean=155.2
+  Partner_3: mean=16.0
+  Partner_4: mean=56.1
+  Partner_15: mean=61.2
+  Overall mean: 88.0
+  Saved to reports/eval_results/cross_sp_s2_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=151.3
+  Partner_1: mean=104.0
+  Partner_2: mean=189.0
+  Partner_3: mean=20.0
+  Partner_4: mean=151.3
+  Partner_7: mean=108.6
+  Overall mean: 122.4
+  Saved to reports/eval_results/cross_sp_s2_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=2.0
+  Partner_1: mean=3.1
+  Partner_2: mean=3.1
+  Partner_3: mean=2.0
+  Partner_4: mean=3.1
+  Partner_8: mean=3.1
+  Overall mean: 2.6
+  Saved to reports/eval_results/cross_sp_s2_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=160.0
+  Partner_1: mean=156.0
+  Partner_2: mean=224.0
+  Partner_3: mean=152.0
+  Partner_4: mean=8.7
+  Partner_15: mean=148.8
+  Overall mean: 168.1
+  Saved to reports/eval_results/cross_sp_s2_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=22.7
+  Partner_1: mean=100.0
+  Partner_2: mean=96.4
+  Partner_3: mean=104.6
+  Partner_4: mean=82.0
+  Partner_15: mean=56.0
+  Overall mean: 81.0
+  Saved to reports/eval_results/cross_sp_s2_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=112.0
+  Partner_1: mean=105.7
+  Partner_2: mean=137.8
+  Partner_3: mean=152.0
+  Partner_4: mean=145.0
+  Partner_7: mean=181.0
+  Overall mean: 143.7
+  Saved to reports/eval_results/cross_sp_s2_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/sp_n2_seed2.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=3.1
+  Partner_1: mean=3.1
+  Partner_2: mean=3.1
+  Partner_3: mean=3.1
+  Partner_4: mean=2.0
+  Partner_8: mean=2.0
+  Overall mean: 2.6
+  Saved to reports/eval_results/cross_sp_s2_vs_bc_s4.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+  Evaluating mep16 vs all partners...
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=174.2
+  Partner_1: mean=180.7
+  Partner_2: mean=136.0
+  Partner_3: mean=103.5
+  Partner_4: mean=144.0
+  Partner_15: mean=146.2
+  Overall mean: 138.1
+  Saved to reports/eval_results/cross_mep16_s0_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=147.2
+  Partner_1: mean=185.8
+  Partner_2: mean=220.0
+  Partner_3: mean=142.8
+  Partner_4: mean=130.8
+  Partner_15: mean=151.1
+  Overall mean: 147.7
+  Saved to reports/eval_results/cross_mep16_s0_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=156.5
+  Partner_1: mean=179.3
+  Partner_2: mean=152.3
+  Partner_3: mean=164.8
+  Partner_4: mean=176.0
+  Partner_7: mean=209.6
+  Overall mean: 178.7
+  Saved to reports/eval_results/cross_mep16_s0_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=1.0
+  Partner_2: mean=1.0
+  Partner_3: mean=0.0
+  Partner_4: mean=2.5
+  Partner_8: mean=0.0
+  Overall mean: 0.7
+  Saved to reports/eval_results/cross_mep16_s0_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=160.9
+  Partner_1: mean=127.9
+  Partner_2: mean=83.8
+  Partner_3: mean=161.5
+  Partner_4: mean=134.2
+  Partner_15: mean=139.3
+  Overall mean: 147.5
+  Saved to reports/eval_results/cross_mep16_s0_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=72.7
+  Partner_1: mean=178.0
+  Partner_2: mean=151.0
+  Partner_3: mean=132.8
+  Partner_4: mean=122.0
+  Partner_15: mean=186.1
+  Overall mean: 147.0
+  Saved to reports/eval_results/cross_mep16_s0_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=204.8
+  Partner_1: mean=208.8
+  Partner_2: mean=96.9
+  Partner_3: mean=180.0
+  Partner_4: mean=152.0
+  Partner_7: mean=176.5
+  Overall mean: 179.4
+  Saved to reports/eval_results/cross_mep16_s0_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed0.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=3.1
+  Partner_1: mean=3.1
+  Partner_2: mean=1.0
+  Partner_3: mean=2.5
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 1.2
+  Saved to reports/eval_results/cross_mep16_s0_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=180.0
+  Partner_1: mean=192.0
+  Partner_2: mean=181.8
+  Partner_3: mean=182.1
+  Partner_4: mean=134.9
+  Partner_15: mean=174.2
+  Overall mean: 172.0
+  Saved to reports/eval_results/cross_mep16_s1_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=140.7
+  Partner_1: mean=216.7
+  Partner_2: mean=216.8
+  Partner_3: mean=163.2
+  Partner_4: mean=144.2
+  Partner_15: mean=181.8
+  Overall mean: 167.9
+  Saved to reports/eval_results/cross_mep16_s1_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=169.1
+  Partner_1: mean=188.0
+  Partner_2: mean=201.9
+  Partner_3: mean=118.8
+  Partner_4: mean=189.0
+  Partner_7: mean=173.0
+  Overall mean: 175.0
+  Saved to reports/eval_results/cross_mep16_s1_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=3.6
+  Partner_1: mean=4.7
+  Partner_2: mean=4.7
+  Partner_3: mean=3.6
+  Partner_4: mean=4.7
+  Partner_8: mean=2.5
+  Overall mean: 4.2
+  Saved to reports/eval_results/cross_mep16_s1_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=136.7
+  Partner_1: mean=35.8
+  Partner_2: mean=180.7
+  Partner_3: mean=184.2
+  Partner_4: mean=148.2
+  Partner_15: mean=177.0
+  Overall mean: 155.8
+  Saved to reports/eval_results/cross_mep16_s1_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=168.7
+  Partner_1: mean=105.6
+  Partner_2: mean=118.2
+  Partner_3: mean=197.0
+  Partner_4: mean=124.0
+  Partner_15: mean=118.1
+  Overall mean: 143.1
+  Saved to reports/eval_results/cross_mep16_s1_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=184.0
+  Partner_1: mean=179.0
+  Partner_2: mean=142.0
+  Partner_3: mean=180.0
+  Partner_4: mean=153.8
+  Partner_7: mean=189.2
+  Overall mean: 169.6
+  Saved to reports/eval_results/cross_mep16_s1_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed1.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=6.7
+  Partner_1: mean=6.7
+  Partner_2: mean=4.7
+  Partner_3: mean=4.7
+  Partner_4: mean=3.6
+  Partner_8: mean=1.5
+  Overall mean: 4.1
+  Saved to reports/eval_results/cross_mep16_s1_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=112.0
+  Partner_1: mean=192.7
+  Partner_2: mean=172.0
+  Partner_3: mean=111.5
+  Partner_4: mean=111.1
+  Partner_15: mean=144.0
+  Overall mean: 147.1
+  Saved to reports/eval_results/cross_mep16_s2_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=177.3
+  Partner_1: mean=198.8
+  Partner_2: mean=208.0
+  Partner_3: mean=183.3
+  Partner_4: mean=187.3
+  Partner_15: mean=184.0
+  Overall mean: 170.2
+  Saved to reports/eval_results/cross_mep16_s2_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=142.6
+  Partner_1: mean=148.0
+  Partner_2: mean=147.0
+  Partner_3: mean=148.4
+  Partner_4: mean=150.7
+  Partner_7: mean=176.8
+  Overall mean: 164.4
+  Saved to reports/eval_results/cross_mep16_s2_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep16_s2_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=136.0
+  Partner_1: mean=161.8
+  Partner_2: mean=64.8
+  Partner_3: mean=176.0
+  Partner_4: mean=141.3
+  Partner_15: mean=168.7
+  Overall mean: 141.3
+  Saved to reports/eval_results/cross_mep16_s2_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=184.0
+  Partner_1: mean=171.0
+  Partner_2: mean=161.2
+  Partner_3: mean=164.0
+  Partner_4: mean=160.8
+  Partner_15: mean=183.9
+  Overall mean: 174.3
+  Saved to reports/eval_results/cross_mep16_s2_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=175.8
+  Partner_1: mean=212.0
+  Partner_2: mean=152.5
+  Partner_3: mean=211.8
+  Partner_4: mean=173.6
+  Partner_7: mean=181.8
+  Overall mean: 187.9
+  Saved to reports/eval_results/cross_mep16_s2_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep16_seed2.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep16_s2_vs_bc_s4.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+  Evaluating mep8 vs all partners...
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=179.3
+  Partner_1: mean=173.1
+  Partner_2: mean=154.8
+  Partner_3: mean=190.1
+  Partner_4: mean=165.1
+  Partner_15: mean=162.8
+  Overall mean: 178.9
+  Saved to reports/eval_results/cross_mep8_s0_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=144.8
+  Partner_1: mean=207.0
+  Partner_2: mean=191.1
+  Partner_3: mean=175.3
+  Partner_4: mean=166.7
+  Partner_15: mean=164.6
+  Overall mean: 166.0
+  Saved to reports/eval_results/cross_mep8_s0_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=216.8
+  Partner_1: mean=157.7
+  Partner_2: mean=154.1
+  Partner_3: mean=143.2
+  Partner_4: mean=207.5
+  Partner_7: mean=226.3
+  Overall mean: 181.1
+  Saved to reports/eval_results/cross_mep8_s0_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep8_s0_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=144.0
+  Partner_1: mean=103.6
+  Partner_2: mean=166.5
+  Partner_3: mean=126.2
+  Partner_4: mean=155.7
+  Partner_15: mean=183.3
+  Overall mean: 159.9
+  Saved to reports/eval_results/cross_mep8_s0_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=98.0
+  Partner_1: mean=176.8
+  Partner_2: mean=145.7
+  Partner_3: mean=187.9
+  Partner_4: mean=148.7
+  Partner_15: mean=109.8
+  Overall mean: 157.9
+  Saved to reports/eval_results/cross_mep8_s0_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=175.5
+  Partner_1: mean=214.7
+  Partner_2: mean=145.1
+  Partner_3: mean=222.5
+  Partner_4: mean=181.1
+  Partner_7: mean=159.3
+  Overall mean: 187.3
+  Saved to reports/eval_results/cross_mep8_s0_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed0.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep8_s0_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=190.5
+  Partner_1: mean=222.8
+  Partner_2: mean=144.0
+  Partner_3: mean=181.4
+  Partner_4: mean=144.4
+  Partner_15: mean=192.0
+  Overall mean: 177.2
+  Saved to reports/eval_results/cross_mep8_s1_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=114.7
+  Partner_1: mean=97.4
+  Partner_2: mean=166.3
+  Partner_3: mean=152.0
+  Partner_4: mean=145.7
+  Partner_15: mean=114.9
+  Overall mean: 149.8
+  Saved to reports/eval_results/cross_mep8_s1_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=201.5
+  Partner_1: mean=208.0
+  Partner_2: mean=221.9
+  Partner_3: mean=159.7
+  Partner_4: mean=236.0
+  Partner_7: mean=182.3
+  Overall mean: 200.1
+  Saved to reports/eval_results/cross_mep8_s1_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep8_s1_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=155.7
+  Partner_1: mean=55.7
+  Partner_2: mean=172.0
+  Partner_3: mean=199.4
+  Partner_4: mean=182.0
+  Partner_15: mean=199.7
+  Overall mean: 161.9
+  Saved to reports/eval_results/cross_mep8_s1_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=107.6
+  Partner_1: mean=180.3
+  Partner_2: mean=176.0
+  Partner_3: mean=188.6
+  Partner_4: mean=134.1
+  Partner_15: mean=148.0
+  Overall mean: 167.4
+  Saved to reports/eval_results/cross_mep8_s1_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=236.0
+  Partner_1: mean=203.7
+  Partner_2: mean=153.8
+  Partner_3: mean=223.0
+  Partner_4: mean=220.0
+  Partner_7: mean=224.0
+  Overall mean: 209.9
+  Saved to reports/eval_results/cross_mep8_s1_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed1.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=0.0
+  Partner_1: mean=0.0
+  Partner_2: mean=0.0
+  Partner_3: mean=0.0
+  Partner_4: mean=0.0
+  Partner_8: mean=0.0
+  Overall mean: 0.0
+  Saved to reports/eval_results/cross_mep8_s1_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=187.5
+  Partner_1: mean=216.0
+  Partner_2: mean=180.0
+  Partner_3: mean=196.0
+  Partner_4: mean=244.0
+  Partner_15: mean=183.3
+  Overall mean: 188.5
+  Saved to reports/eval_results/cross_mep8_s2_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=171.4
+  Partner_1: mean=210.0
+  Partner_2: mean=224.0
+  Partner_3: mean=184.0
+  Partner_4: mean=154.3
+  Partner_15: mean=144.8
+  Overall mean: 163.8
+  Saved to reports/eval_results/cross_mep8_s2_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=195.0
+  Partner_1: mean=175.0
+  Partner_2: mean=231.5
+  Partner_3: mean=188.0
+  Partner_4: mean=244.0
+  Partner_7: mean=224.0
+  Overall mean: 208.4
+  Saved to reports/eval_results/cross_mep8_s2_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=2.5
+  Partner_1: mean=2.5
+  Partner_2: mean=2.5
+  Partner_3: mean=1.0
+  Partner_4: mean=2.5
+  Partner_8: mean=2.5
+  Overall mean: 2.1
+  Saved to reports/eval_results/cross_mep8_s2_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=188.0
+  Partner_1: mean=124.0
+  Partner_2: mean=183.5
+  Partner_3: mean=190.7
+  Partner_4: mean=148.0
+  Partner_15: mean=198.9
+  Overall mean: 176.8
+  Saved to reports/eval_results/cross_mep8_s2_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=116.9
+  Partner_1: mean=150.4
+  Partner_2: mean=173.9
+  Partner_3: mean=152.0
+  Partner_4: mean=103.3
+  Partner_15: mean=116.0
+  Overall mean: 141.2
+  Saved to reports/eval_results/cross_mep8_s2_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=248.7
+  Partner_1: mean=232.0
+  Partner_2: mean=205.0
+  Partner_3: mean=228.0
+  Partner_4: mean=196.0
+  Partner_7: mean=193.1
+  Overall mean: 215.8
+  Saved to reports/eval_results/cross_mep8_s2_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/mep8_seed2.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=4.5
+  Partner_1: mean=4.5
+  Partner_2: mean=2.5
+  Partner_3: mean=2.5
+  Partner_4: mean=0.0
+  Partner_8: mean=1.5
+  Overall mean: 2.2
+  Saved to reports/eval_results/cross_mep8_s2_vs_bc_s4.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+  Evaluating bcp vs all partners...
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=66.1
+  Partner_1: mean=27.7
+  Partner_2: mean=73.3
+  Partner_3: mean=95.7
+  Partner_4: mean=16.5
+  Partner_15: mean=23.6
+  Overall mean: 47.0
+  Saved to reports/eval_results/cross_bcp_s0_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=29.4
+  Partner_1: mean=21.0
+  Partner_2: mean=67.5
+  Partner_3: mean=26.7
+  Partner_4: mean=29.4
+  Partner_15: mean=73.3
+  Overall mean: 51.9
+  Saved to reports/eval_results/cross_bcp_s0_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=8.8
+  Partner_1: mean=34.4
+  Partner_2: mean=12.6
+  Partner_3: mean=26.7
+  Partner_4: mean=34.7
+  Partner_7: mean=18.6
+  Overall mean: 29.5
+  Saved to reports/eval_results/cross_bcp_s0_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=101.5
+  Partner_1: mean=108.7
+  Partner_2: mean=110.8
+  Partner_3: mean=123.1
+  Partner_4: mean=110.8
+  Partner_8: mean=100.8
+  Overall mean: 104.1
+  Saved to reports/eval_results/cross_bcp_s0_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=26.7
+  Partner_1: mean=28.8
+  Partner_2: mean=87.7
+  Partner_3: mean=21.4
+  Partner_4: mean=84.2
+  Partner_15: mean=20.0
+  Overall mean: 52.8
+  Saved to reports/eval_results/cross_bcp_s0_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=33.3
+  Partner_1: mean=92.5
+  Partner_2: mean=42.2
+  Partner_3: mean=78.6
+  Partner_4: mean=83.3
+  Partner_15: mean=29.5
+  Overall mean: 52.2
+  Saved to reports/eval_results/cross_bcp_s0_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=74.4
+  Partner_1: mean=35.3
+  Partner_2: mean=45.4
+  Partner_3: mean=21.7
+  Partner_4: mean=15.7
+  Partner_7: mean=14.7
+  Overall mean: 43.6
+  Saved to reports/eval_results/cross_bcp_s0_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=110.8
+  Partner_1: mean=106.7
+  Partner_2: mean=112.3
+  Partner_3: mean=110.8
+  Partner_4: mean=104.0
+  Partner_8: mean=81.4
+  Overall mean: 101.9
+  Saved to reports/eval_results/cross_bcp_s0_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=76.9
+  Partner_1: mean=141.1
+  Partner_2: mean=100.0
+  Partner_3: mean=7.8
+  Partner_4: mean=87.8
+  Partner_15: mean=20.0
+  Overall mean: 75.9
+  Saved to reports/eval_results/cross_bcp_s1_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=22.2
+  Partner_1: mean=75.6
+  Partner_2: mean=180.2
+  Partner_3: mean=82.4
+  Partner_4: mean=23.1
+  Partner_15: mean=104.7
+  Overall mean: 70.3
+  Saved to reports/eval_results/cross_bcp_s1_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=86.7
+  Partner_1: mean=98.9
+  Partner_2: mean=98.3
+  Partner_3: mean=35.6
+  Partner_4: mean=141.1
+  Partner_7: mean=146.7
+  Overall mean: 89.5
+  Saved to reports/eval_results/cross_bcp_s1_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=104.0
+  Partner_1: mean=113.3
+  Partner_2: mean=113.3
+  Partner_3: mean=104.0
+  Partner_4: mean=113.3
+  Partner_8: mean=108.1
+  Overall mean: 105.1
+  Saved to reports/eval_results/cross_bcp_s1_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=100.0
+  Partner_1: mean=92.9
+  Partner_2: mean=21.1
+  Partner_3: mean=153.3
+  Partner_4: mean=93.3
+  Partner_15: mean=100.0
+  Overall mean: 94.5
+  Saved to reports/eval_results/cross_bcp_s1_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=33.3
+  Partner_1: mean=105.9
+  Partner_2: mean=33.0
+  Partner_3: mean=138.8
+  Partner_4: mean=25.6
+  Partner_15: mean=89.9
+  Overall mean: 75.7
+  Saved to reports/eval_results/cross_bcp_s1_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=74.1
+  Partner_1: mean=22.2
+  Partner_2: mean=31.8
+  Partner_3: mean=80.0
+  Partner_4: mean=86.2
+  Partner_7: mean=50.8
+  Overall mean: 66.1
+  Saved to reports/eval_results/cross_bcp_s1_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=113.3
+  Partner_1: mean=113.3
+  Partner_2: mean=113.3
+  Partner_3: mean=113.3
+  Partner_4: mean=104.0
+  Partner_8: mean=86.7
+  Overall mean: 108.7
+  Saved to reports/eval_results/cross_bcp_s1_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=82.2
+  Partner_1: mean=82.2
+  Partner_2: mean=73.3
+  Partner_3: mean=24.4
+  Partner_4: mean=80.0
+  Partner_15: mean=75.6
+  Overall mean: 53.0
+  Saved to reports/eval_results/cross_bcp_s2_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=80.0
+  Partner_1: mean=84.4
+  Partner_2: mean=86.7
+  Partner_3: mean=92.2
+  Partner_4: mean=23.1
+  Partner_15: mean=71.1
+  Overall mean: 67.6
+  Saved to reports/eval_results/cross_bcp_s2_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=13.3
+  Partner_1: mean=81.1
+  Partner_2: mean=19.3
+  Partner_3: mean=16.7
+  Partner_4: mean=21.1
+  Partner_7: mean=73.3
+  Overall mean: 43.0
+  Saved to reports/eval_results/cross_bcp_s2_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=104.0
+  Partner_1: mean=113.3
+  Partner_2: mean=113.3
+  Partner_3: mean=126.3
+  Partner_4: mean=113.3
+  Partner_8: mean=108.1
+  Overall mean: 107.4
+  Saved to reports/eval_results/cross_bcp_s2_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=93.3
+  Partner_1: mean=18.5
+  Partner_2: mean=61.1
+  Partner_3: mean=92.2
+  Partner_4: mean=10.0
+  Partner_15: mean=34.3
+  Overall mean: 48.9
+  Saved to reports/eval_results/cross_bcp_s2_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=67.8
+  Partner_1: mean=85.1
+  Partner_2: mean=30.8
+  Partner_3: mean=77.6
+  Partner_4: mean=24.4
+  Partner_15: mean=134.4
+  Overall mean: 64.9
+  Saved to reports/eval_results/cross_bcp_s2_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=86.7
+  Partner_1: mean=86.7
+  Partner_2: mean=72.9
+  Partner_3: mean=26.7
+  Partner_4: mean=19.4
+  Partner_7: mean=37.2
+  Overall mean: 63.1
+  Saved to reports/eval_results/cross_bcp_s2_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/bcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=113.3
+  Partner_1: mean=113.3
+  Partner_2: mean=113.3
+  Partner_3: mean=113.3
+  Partner_4: mean=104.0
+  Partner_8: mean=84.6
+  Overall mean: 104.3
+  Saved to reports/eval_results/cross_bcp_s2_vs_bc_s4.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+  Evaluating fcp vs all partners...
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=146.5
+  Partner_1: mean=156.5
+  Partner_2: mean=193.0
+  Partner_3: mean=186.5
+  Partner_4: mean=107.2
+  Partner_15: mean=220.7
+  Overall mean: 156.5
+  Saved to reports/eval_results/cross_fcp_s0_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=54.0
+  Partner_1: mean=177.8
+  Partner_2: mean=166.7
+  Partner_3: mean=29.7
+  Partner_4: mean=67.3
+  Partner_15: mean=98.9
+  Overall mean: 95.0
+  Saved to reports/eval_results/cross_fcp_s0_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=159.5
+  Partner_1: mean=74.2
+  Partner_2: mean=224.0
+  Partner_3: mean=44.2
+  Partner_4: mean=161.5
+  Partner_7: mean=170.2
+  Overall mean: 134.4
+  Saved to reports/eval_results/cross_fcp_s0_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=45.8
+  Partner_1: mean=28.1
+  Partner_2: mean=45.8
+  Partner_3: mean=57.0
+  Partner_4: mean=50.6
+  Partner_8: mean=13.1
+  Overall mean: 39.1
+  Saved to reports/eval_results/cross_fcp_s0_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=145.9
+  Partner_1: mean=34.7
+  Partner_2: mean=145.2
+  Partner_3: mean=178.0
+  Partner_4: mean=121.8
+  Partner_15: mean=152.0
+  Overall mean: 134.7
+  Saved to reports/eval_results/cross_fcp_s0_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=77.3
+  Partner_1: mean=143.1
+  Partner_2: mean=75.8
+  Partner_3: mean=140.0
+  Partner_4: mean=64.0
+  Partner_15: mean=61.9
+  Overall mean: 107.4
+  Saved to reports/eval_results/cross_fcp_s0_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=116.7
+  Partner_1: mean=156.5
+  Partner_2: mean=134.2
+  Partner_3: mean=115.3
+  Partner_4: mean=173.7
+  Partner_7: mean=152.6
+  Overall mean: 157.4
+  Saved to reports/eval_results/cross_fcp_s0_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=45.8
+  Partner_1: mean=36.1
+  Partner_2: mean=45.8
+  Partner_3: mean=47.2
+  Partner_4: mean=43.9
+  Partner_8: mean=13.7
+  Overall mean: 35.8
+  Saved to reports/eval_results/cross_fcp_s0_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=196.0
+  Partner_1: mean=221.2
+  Partner_2: mean=206.7
+  Partner_3: mean=162.2
+  Partner_4: mean=96.7
+  Partner_15: mean=193.9
+  Overall mean: 173.7
+  Saved to reports/eval_results/cross_fcp_s1_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=49.9
+  Partner_1: mean=220.0
+  Partner_2: mean=153.5
+  Partner_3: mean=107.3
+  Partner_4: mean=142.8
+  Partner_15: mean=123.3
+  Overall mean: 134.4
+  Saved to reports/eval_results/cross_fcp_s1_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=158.9
+  Partner_1: mean=111.1
+  Partner_2: mean=220.0
+  Partner_3: mean=127.6
+  Partner_4: mean=232.0
+  Partner_7: mean=121.3
+  Overall mean: 150.2
+  Saved to reports/eval_results/cross_fcp_s1_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=50.6
+  Partner_1: mean=51.7
+  Partner_2: mean=51.7
+  Partner_3: mean=50.6
+  Partner_4: mean=40.0
+  Partner_8: mean=32.3
+  Overall mean: 43.8
+  Saved to reports/eval_results/cross_fcp_s1_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=192.7
+  Partner_1: mean=114.4
+  Partner_2: mean=57.2
+  Partner_3: mean=144.7
+  Partner_4: mean=156.0
+  Partner_15: mean=152.0
+  Overall mean: 162.7
+  Saved to reports/eval_results/cross_fcp_s1_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=107.3
+  Partner_1: mean=136.0
+  Partner_2: mean=180.0
+  Partner_3: mean=111.0
+  Partner_4: mean=114.0
+  Partner_15: mean=169.8
+  Overall mean: 130.9
+  Saved to reports/eval_results/cross_fcp_s1_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=152.2
+  Partner_1: mean=164.3
+  Partner_2: mean=138.2
+  Partner_3: mean=185.7
+  Partner_4: mean=115.5
+  Partner_7: mean=225.0
+  Overall mean: 170.1
+  Saved to reports/eval_results/cross_fcp_s1_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed1.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=35.6
+  Partner_1: mean=35.6
+  Partner_2: mean=51.7
+  Partner_3: mean=60.0
+  Partner_4: mean=50.6
+  Partner_8: mean=31.2
+  Overall mean: 42.1
+  Saved to reports/eval_results/cross_fcp_s1_vs_bc_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+  Partner_0: mean=143.2
+  Partner_1: mean=181.0
+  Partner_2: mean=180.0
+  Partner_3: mean=134.0
+  Partner_4: mean=205.7
+  Partner_15: mean=176.0
+  Overall mean: 170.2
+  Saved to reports/eval_results/cross_fcp_s2_vs_sp_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep16_pop_seed3.pkl
+  Partner_0: mean=103.0
+  Partner_1: mean=204.0
+  Partner_2: mean=162.0
+  Partner_3: mean=175.3
+  Partner_4: mean=108.0
+  Partner_15: mean=96.0
+  Overall mean: 137.6
+  Saved to reports/eval_results/cross_fcp_s2_vs_mep16_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep8_pop_seed3.pkl
+  Partner_0: mean=188.0
+  Partner_1: mean=140.7
+  Partner_2: mean=152.5
+  Partner_3: mean=112.7
+  Partner_4: mean=216.0
+  Partner_7: mean=156.3
+  Overall mean: 160.8
+  Saved to reports/eval_results/cross_fcp_s2_vs_mep8_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/bc_seed3.pkl
+  Partner_0: mean=63.3
+  Partner_1: mean=71.6
+  Partner_2: mean=71.6
+  Partner_3: mean=64.7
+  Partner_4: mean=71.6
+  Partner_8: mean=42.0
+  Overall mean: 58.8
+  Saved to reports/eval_results/cross_fcp_s2_vs_bc_s3.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/sp_pop_seed4.pkl
+  Partner_0: mean=177.0
+  Partner_1: mean=152.4
+  Partner_2: mean=181.7
+  Partner_3: mean=185.5
+  Partner_4: mean=144.0
+  Partner_15: mean=150.5
+  Overall mean: 169.1
+  Saved to reports/eval_results/cross_fcp_s2_vs_sp_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep16_pop_seed4.pkl
+  Partner_0: mean=104.0
+  Partner_1: mean=134.6
+  Partner_2: mean=112.0
+  Partner_3: mean=140.0
+  Partner_4: mean=87.0
+  Partner_15: mean=139.8
+  Overall mean: 123.3
+  Saved to reports/eval_results/cross_fcp_s2_vs_mep16_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/mep8_pop_seed4.pkl
+  Partner_0: mean=183.4
+  Partner_1: mean=171.6
+  Partner_2: mean=109.5
+  Partner_3: mean=170.1
+  Partner_4: mean=153.0
+  Partner_7: mean=149.8
+  Overall mean: 172.1
+  Saved to reports/eval_results/cross_fcp_s2_vs_mep8_s4.json
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed2.pkl vs partner=checkpoints/bc_seed4.pkl
+  Partner_0: mean=71.6
+  Partner_1: mean=71.6
+  Partner_2: mean=71.6
+  Partner_3: mean=71.6
+  Partner_4: mean=48.6
+  Partner_8: mean=43.9
+  Overall mean: 60.2
+  Saved to reports/eval_results/cross_fcp_s2_vs_bc_s4.json
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+==========================================
+ FINAL RESULTS
+==========================================
+
+==========================================================================================
+TABLE 1: Self-Play Performance (Populations & BC)
+==========================================================================================
+
+  SP Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_1       260.0       500.0       240.0       200.0       180.0     276.0
+           Agent_2       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_3       260.0       500.0       200.0       200.0       180.0     268.0
+           Agent_4       260.0       500.0       260.0       200.0       140.0     272.0
+           Agent_5       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_6       260.0       500.0       240.0       200.0       160.0     272.0
+           Agent_7       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_8       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_9       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_10       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_11       260.0       500.0       220.0       200.0       180.0     272.0
+          Agent_12       260.0       500.0       200.0       200.0       140.0     260.0
+          Agent_13       260.0       500.0       220.0       200.0       160.0     268.0
+          Agent_14       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_15       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_0       260.0       500.0       280.0       200.0       160.0     280.0
+           Agent_1       260.0       500.0       240.0       184.8       140.0     265.0
+           Agent_2       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_3       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_4        20.0       500.0       280.0       200.0        15.6     203.1
+           Agent_5       260.0       500.0       220.0       200.0       180.0     272.0
+           Agent_6       260.0       500.0       220.0       200.0       160.0     268.0
+           Agent_7       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_8       260.0       500.0       280.0       200.0       180.0     284.0
+           Agent_9       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_10       260.0       500.0       220.0       180.0       140.0     260.0
+          Agent_11       260.0       500.0       220.0       200.0       140.0     264.0
+          Agent_12       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_13       260.0       500.0       240.0       200.0       180.0     276.0
+          Agent_14       260.0       500.0       280.0       200.0       140.0     276.0
+          Agent_15       260.0       500.0       220.0       200.0       140.0     264.0
+           OVERALL                                                                 268.5
+
+  MEP-16 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_1       260.0       460.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       480.0       200.0       200.0         0.0     224.0
+           Agent_3       260.0       280.0       220.0       180.0         0.0     188.0
+           Agent_4       260.0       280.0       200.0         4.2         0.0     148.8
+           Agent_5       224.8        80.0        33.8        11.0         0.0      69.9
+           Agent_6       240.0       260.0       195.0       200.0         0.0     179.0
+           Agent_7       260.0       280.0       200.0       200.0         0.0     188.0
+           Agent_8       240.0       280.0       220.0       200.0         0.0     188.0
+           Agent_9       260.0       280.0       200.0       200.0         0.0     188.0
+          Agent_10       260.0       500.0       200.0       180.0         0.0     228.0
+          Agent_11       220.0       440.0       200.0       180.0         0.0     208.0
+          Agent_12       240.0       274.6       220.0       200.0         0.0     186.9
+          Agent_13       260.0       400.0       160.0       180.0         0.0     200.0
+          Agent_14       260.0       280.0       180.0       200.0         0.0     184.0
+          Agent_15       245.0       260.0       200.0       180.0         0.0     177.0
+           Agent_0       260.0       280.0       200.0       184.8         0.0     185.0
+           Agent_1       240.0       480.0       180.0       200.0         0.0     220.0
+           Agent_2       240.0       280.0       200.0       200.0         0.0     184.0
+           Agent_3       240.0       480.0       220.0         0.0         0.0     188.0
+           Agent_4       240.0       280.0       220.0       180.0         0.0     184.0
+           Agent_5       240.0       278.8       200.0       200.0         0.0     183.8
+           Agent_6       260.0       400.0       200.0       200.0         0.0     212.0
+           Agent_7       113.8       420.0       215.0       200.0         0.0     189.8
+           Agent_8       240.0       280.0       200.0       195.2         0.0     183.0
+           Agent_9       240.0       420.0       220.0       200.0         0.0     216.0
+          Agent_10       240.0       280.0       200.0       200.0         0.0     184.0
+          Agent_11       260.0       380.0       200.0       187.9         0.0     205.6
+          Agent_12       260.0       260.0       200.0       200.0         0.0     184.0
+          Agent_13       240.0       280.0       220.0       200.0         0.0     188.0
+          Agent_14       260.0       380.0       220.0       200.0         0.0     212.0
+          Agent_15       260.0       280.0       200.0       180.0         0.0     184.0
+           OVERALL                                                                 189.5
+
+  MEP-8 Population
+             Agentcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+----------------------------------------------------------------------------------------
+           Agent_0       260.0       500.0       220.0       200.0       140.0     264.0
+           Agent_1       260.0       280.0       220.0       200.0       140.0     220.0
+           Agent_2       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_3       260.0       280.0       220.0       200.0       114.4     214.9
+           Agent_4       240.0       500.0       200.0       200.0       120.0     252.0
+           Agent_5       260.0       500.0       200.0       200.0       140.0     260.0
+           Agent_6       260.0       280.0       200.0       200.0       160.0     220.0
+           Agent_7       220.0       500.0       220.0       200.0       100.0     248.0
+           Agent_0       240.0       500.0       200.0       200.0       140.0     256.0
+           Agent_1       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_2       260.0       260.0       220.0       200.0       120.0     212.0
+           Agent_3       260.0       500.0       220.0       200.0       120.0     260.0
+           Agent_4       260.0       500.0       200.0       200.0       113.8     254.8
+           Agent_5       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_6       240.0       500.0       220.0       200.0       120.0     256.0
+           Agent_7       240.0       480.0       240.0       200.0       140.0     260.0
+           OVERALL                                                                 246.9
+
+  BC Agents
+             Agentcramped_roomasymm_advant  coord_ring      Mean
+----------------------------------------------------------------
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           Agent_0         0.0         0.0         0.0       0.0
+           Agent_1         0.0         0.0         0.0       0.0
+           Agent_2         0.0         0.0         0.0       0.0
+           Agent_3         0.0         0.0         0.0       0.0
+           Agent_4         0.0         0.0         0.0       0.0
+           Agent_5         0.0         0.0         0.0       0.0
+           Agent_6         0.0         0.0         0.0       0.0
+           Agent_7         0.0         0.0         0.0       0.0
+           Agent_8         0.0         0.0         0.0       0.0
+           OVERALL                                           0.0
+
+==========================================================================================
+TABLE 2: Ego Self-Play Performance
+==========================================================================================
+        Methodcramped_roomasymm_advant  coord_ringforced_coordcounter_circ      Mean
+------------------------------------------------------------------------------------
+            SP       260.0       500.0       240.0       200.0       160.0     272.0
+        MEP-16       253.3       206.7       140.0       200.0        30.1     166.0
+         MEP-8       253.3       421.5       140.0       173.8         0.0     197.7
+           BCP         8.5       153.3        73.3           —           —      78.4
+           FCP       163.5       158.9        73.3        55.8        24.6      95.2
+
+================================================================================
+TABLE 4: Cross-Play Summary (mean sparse reward)
+================================================================================
+         Ego         vs sp      vs mep16       vs mep8         vs bc     Overall
+--------------------------------------------------------------------------------
+          SP         152.3          91.9         133.2           0.9        94.6
+       MEP16         150.3         158.4         175.8           1.7       121.6
+        MEP8         173.9         157.7         200.4           0.7       133.2
+         BCP          62.0          63.8          55.8         105.3        71.7
+         FCP         161.2         121.4         157.5          46.6       121.7
+
+
+ Run 3 complete. Results in reports/eval_results/
