@@ -98,23 +98,33 @@ class ResBlock(nn.Module):
 
 
 class IMPALACNNActorCritic(nn.Module):
-    """Actor-Critic with 4-block IMPALA ResNet encoder.
+    """Actor-Critic with 4-block IMPALA ResNet encoder and palette decoding.
 
-    Designed for pixel observations (3x160x288). ~1.5M params.
+    Accepts palette-indexed uint8 observations (1, H, W) and decodes to RGB
+    via palette lookup before processing through the CNN. This keeps trajectory
+    storage at 1 byte/pixel while the CNN sees full float32 RGB.
 
-    Architecture:
-      Block 1: Conv(16, 3x3) -> MaxPool(3x3, stride=2) -> ResBlock(16) x2  -> 80x144x16
-      Block 2: Conv(32, 3x3) -> MaxPool(3x3, stride=2) -> ResBlock(32) x2  -> 40x72x32
-      Block 3: Conv(32, 3x3) -> MaxPool(3x3, stride=2) -> ResBlock(32) x2  -> 20x36x32
-      Block 4: Conv(32, 3x3) -> MaxPool(3x3, stride=2) -> ResBlock(32) x2  -> 10x18x32
-      ReLU -> Flatten(5760) -> Dense(256) -> ReLU -> Actor/Critic heads
+    For 16×16 tiles (80×144 images):
+      Palette decode: (1, 80, 144) uint8 -> (3, 80, 144) float32
+      Block 1: Conv(16) -> MaxPool(stride=2) -> 2×ResBlock  -> 40×72×16
+      Block 2: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 20×36×32
+      Block 3: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 10×18×32
+      Block 4: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 5×9×32
+      ReLU -> Flatten(1440) -> Dense(256) -> ReLU -> Actor/Critic heads
+      ~375K params
     """
     action_dim: int
     block_channels: Sequence[int] = (16, 32, 32, 32)
     mlp_dim: int = 256
+    palette: jnp.ndarray = None  # (num_colors, 3) float32, set at construction
 
     @nn.compact
     def __call__(self, x):
+        # Palette decode: (…, 1, H, W) uint8 -> (…, 3, H, W) float32
+        if self.palette is not None:
+            from obs_encoding import palette_decode
+            x = palette_decode(self.palette, x)
+
         # x: (..., C, H, W) -> (..., H, W, C) for flax Conv
         x = jnp.moveaxis(x, -3, -1)
         batch_shape = x.shape[:-3]

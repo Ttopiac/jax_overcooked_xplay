@@ -99,7 +99,7 @@ def main():
         obs_enc = config.get("obs_encoding", "egocentric")
         encoder = ObsEncoder(mode=obs_enc)
         if obs_enc == "pixel":
-            network = IMPALACNNActorCritic(action_dim=6)
+            network = IMPALACNNActorCritic(action_dim=6, palette=encoder.atlas.palette)
         elif obs_enc == "full":
             network = CNNActorCritic(action_dim=6)
         else:

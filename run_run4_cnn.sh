@@ -1,7 +1,9 @@
 #!/bin/bash
 # Run 4: Human-equivalent pixel observations + IMPALA ResNet CNN.
 # Agents see the same rendered kitchen image a human sees (32x32 tile sprites).
-# All methods use --obs-encoding pixel with IMPALACNNActorCritic (~1.6M params).
+# All methods use --obs-encoding pixel with IMPALACNNActorCritic (~514K params).
+# Palette-indexed storage (1 byte/pixel, 12× smaller than float32 RGB) enables
+# batch_size=8 with 42 envs/layout — same training regime as Run 3.
 # Trains SP Pop, MEP Pop+Ego, and FCP from scratch. 100M steps each.
 # BCP is skipped (BC partners use egocentric encoding, incompatible with pixel mode).
 set -e
@@ -22,8 +24,10 @@ log "=========================================="
 # --- Step 1: SP Population (pixel obs + IMPALA CNN) ---
 log ""
 log "=== Step 1: SP Population (pixel obs + IMPALA CNN) ==="
+# Palette-indexed pixel obs: 1 byte/pixel instead of 12 (float32 RGB).
+# 16x16 tiles with palette indexing fits batch_size=8 with 42 envs/layout.
 python train_sp_population.py --seeds 0,1,2,3,4 --pop-size 16 --num-checkpoints 35 \
-    --total-timesteps 100000000 --obs-encoding pixel --batch-size 4 --wandb
+    --total-timesteps 100000000 --obs-encoding pixel --batch-size 8 --wandb
 log "Step 1 done."
 
 # --- Step 2: Evaluate SP pop per layout (for FCP) ---
@@ -79,7 +83,8 @@ log ""
 log "=== Step 6: BCP (pixel ego, egocentric BC partners) ==="
 python train_bcp.py --seeds 0,1,2 \
     --total-timesteps 100000000 --num-agents 2 --num-unseen 1 \
-    --obs-encoding pixel --bc-anneal-horizon 8000 --wandb
+    --obs-encoding pixel --bc-anneal-horizon 8000 \
+    --wandb
 log "Step 6 done."
 
 log "--- Eval: BCP ego self-play ---"

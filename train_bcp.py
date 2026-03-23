@@ -276,7 +276,7 @@ def main():
                                  reward_shaping_horizon=config["reward_shaping_horizon"])
     obs_enc = config.get("obs_encoding", "egocentric")
     if obs_enc == "pixel":
-        ego_network = IMPALACNNActorCritic(action_dim=6)
+        ego_network = IMPALACNNActorCritic(action_dim=6, palette=encoder.atlas.palette)
     elif encoder.obs_shape is not None:
         ego_network = CNNActorCritic(action_dim=6)
     else:

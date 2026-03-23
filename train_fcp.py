@@ -330,7 +330,7 @@ def main():
     action_dim = 6
     obs_enc = config.get("obs_encoding", "egocentric")
     if obs_enc == "pixel":
-        network = IMPALACNNActorCritic(action_dim=action_dim)
+        network = IMPALACNNActorCritic(action_dim=action_dim, palette=encoder.atlas.palette)
     elif encoder.obs_shape is not None:
         network = CNNActorCritic(action_dim=action_dim)
     else:

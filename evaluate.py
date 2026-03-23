@@ -410,9 +410,10 @@ def main():
             return data["config"]["obs_encoding"]
         return "egocentric"
 
-    def _make_network(hidden_dims, obs_encoding="egocentric"):
+    def _make_network(hidden_dims, obs_encoding="egocentric", encoder=None):
         if obs_encoding == "pixel":
-            return IMPALACNNActorCritic(action_dim=6)
+            palette = encoder.atlas.palette if encoder else ObsEncoder(mode="pixel").atlas.palette
+            return IMPALACNNActorCritic(action_dim=6, palette=palette)
         if obs_encoding == "full":
             return CNNActorCritic(action_dim=6)
         return ActorCritic(action_dim=6, hidden_dims=hidden_dims)
@@ -437,7 +438,7 @@ def main():
             dims = _override_or_detect(ckpt_dims, args.bc_hidden_dim, args.bc_num_layers)
         else:
             dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
-        network = _make_network(dims, obs_enc)
+        network = _make_network(dims, obs_enc, encoder)
         eval_layouts = BCP_LAYOUTS if args.agent_type == "bc" else layouts
 
         results_table = {}
@@ -460,7 +461,7 @@ def main():
         encoder = ObsEncoder(mode=obs_enc)
         params, ckpt_dims = load_ego_agent(args.agent_path)
         dims = _override_or_detect(ckpt_dims, args.hidden_dim, args.num_layers)
-        network = _make_network(dims, obs_enc)
+        network = _make_network(dims, obs_enc, encoder)
         params = jax.device_put(params)
         results = evaluate_self_play(network, params, encoder, layouts,
                                       args.num_episodes, args.num_envs)
@@ -475,7 +476,7 @@ def main():
         encoder = ObsEncoder(mode=obs_enc)
         ego_params, ego_dims = load_ego_agent(args.ego_path)
         ego_dims = _override_or_detect(ego_dims, args.hidden_dim, args.num_layers)
-        ego_network = _make_network(ego_dims, obs_enc)
+        ego_network = _make_network(ego_dims, obs_enc, encoder)
         ego_params = jax.device_put(ego_params)
 
         partners, partner_dims = load_pop_agents(args.partner_path)
@@ -486,7 +487,8 @@ def main():
             p_dims = _override_or_detect(partner_dims, args.bc_hidden_dim, args.bc_num_layers)
         else:
             p_dims = _override_or_detect(partner_dims, args.hidden_dim, args.num_layers)
-        partner_network = _make_network(p_dims, partner_obs_enc)
+        partner_encoder = ObsEncoder(mode=partner_obs_enc) if partner_obs_enc != obs_enc else encoder
+        partner_network = _make_network(p_dims, partner_obs_enc, partner_encoder)
         eval_layouts = BCP_LAYOUTS if args.partner_type == "bc" else layouts
 
         all_results = []

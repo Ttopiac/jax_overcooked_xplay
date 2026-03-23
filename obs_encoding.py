@@ -44,10 +44,14 @@ FULL_CHANNELS = 26
 FULL_OBS_SHAPE = (FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W)  # (26, 5, 9) CHW format
 
 # --- Pixel observation constants ---
-TILE_SIZE = 32
-PIXEL_MAX_H = FULL_MAX_H * TILE_SIZE  # 5 * 32 = 160
-PIXEL_MAX_W = FULL_MAX_W * TILE_SIZE  # 9 * 32 = 288
-PIXEL_OBS_SHAPE = (3, PIXEL_MAX_H, PIXEL_MAX_W)  # (3, 160, 288)
+# Tile resolution: 16×16 sprites rendered from the same visualizer as humans see.
+# Stored as palette-indexed uint8 (1 byte/pixel) instead of float32 RGB (12 bytes/pixel)
+# for 12× VRAM savings, enabling batch_size=8 with 42 envs/layout.
+TILE_SIZE = 16
+PIXEL_MAX_H = FULL_MAX_H * TILE_SIZE  # 5 * 16 = 80
+PIXEL_MAX_W = FULL_MAX_W * TILE_SIZE  # 9 * 16 = 144
+# Palette-indexed obs: (1, H, W) uint8 indices. CNN decodes to RGB via palette lookup.
+PIXEL_OBS_SHAPE = (1, PIXEL_MAX_H, PIXEL_MAX_W)
 
 # Atlas layout:
 #   [0]: floor (empty/unseen)
@@ -155,23 +159,64 @@ def _build_sprite_atlas(tile_size=TILE_SIZE):
     return atlas
 
 
+def _build_palette_atlas(tile_size=TILE_SIZE):
+    """Build a color palette and palette-indexed sprite atlas.
+
+    Instead of storing RGB per pixel (3 bytes), we discover the unique colors
+    across all sprites and store a single palette index per pixel (1 byte).
+    This gives 3× memory savings over uint8 RGB and 12× over float32 RGB,
+    enabling batch_size=8 with 42 envs/layout on a 24GB GPU.
+
+    Returns:
+        palette_np: (num_colors, 3) uint8 — the color lookup table
+        indexed_atlas: (_NUM_ATLAS_TILES, tile_size, tile_size) uint8 — palette indices
+    """
+    atlas_rgb = _build_sprite_atlas(tile_size)  # (_NUM_ATLAS_TILES, T, T, 3) uint8
+
+    # Discover unique colors across all tiles
+    all_pixels = atlas_rgb.reshape(-1, 3)
+    unique_colors, inverse = np.unique(all_pixels, axis=0, return_inverse=True)
+    num_colors = len(unique_colors)
+    assert num_colors <= 256, f"Too many unique colors ({num_colors}) for uint8 palette"
+
+    # Build palette-indexed atlas
+    indexed_atlas = inverse.reshape(atlas_rgb.shape[:-1]).astype(np.uint8)
+
+    return unique_colors.astype(np.uint8), indexed_atlas
+
+
 class SpriteAtlas:
-    """Pre-rendered sprite atlas for pixel observation encoding.
+    """Pre-rendered sprite atlas with palette indexing for memory-efficient storage.
+
+    Palette indexing stores 1 byte per pixel (palette index) instead of 3 bytes
+    (RGB uint8) or 12 bytes (RGB float32). The CNN decodes palette indices to
+    float32 RGB via a single gather operation at forward-pass time.
+
+    Memory comparison for 16×16 tiles, 42 envs/layout, 500 steps, batch_size=8:
+        float32 RGB: 58 GB trajectory — does not fit 24GB GPU
+        uint8 RGB:   19 GB trajectory — tight
+        palette:      6 GB trajectory — comfortable fit
 
     Built once at init using OvercookedVisualizer rendering primitives.
-    Stored as a JAX array for GPU-resident lookup at runtime.
     """
 
     def __init__(self, tile_size=TILE_SIZE):
-        atlas_np = _build_sprite_atlas(tile_size)
-        self.atlas = jnp.array(atlas_np, dtype=jnp.float32) / 255.0
+        palette_np, indexed_atlas_np = _build_palette_atlas(tile_size)
+        # Palette: (num_colors, 3) float32 normalized — used for decode at forward pass
+        self.palette = jnp.array(palette_np, dtype=jnp.float32) / 255.0
+        # Indexed atlas: (_NUM_ATLAS_TILES, T, T) uint8 palette indices
+        self.indexed_atlas = jnp.array(indexed_atlas_np, dtype=jnp.uint8)
+        self.num_colors = len(palette_np)
         self.tile_size = tile_size
         self.obj_tile_base = jnp.array(_OBJ_TILE_BASE_NP)
         self.inv_to_bucket = jnp.array(_INV_BUCKET_NP)
 
 
 def pixel_encode(obs, state, agent_idx, num_envs, atlas):
-    """Encode game state as pixel images using pre-rendered sprite atlas.
+    """Encode game state as palette-indexed pixel images.
+
+    Returns uint8 palette indices (1 byte/pixel) instead of float32 RGB
+    (12 bytes/pixel). The CNN decodes to RGB via palette lookup at forward time.
 
     Reads directly from state.maze_map (not the JaxMARL obs channels).
     All runtime operations are pure JAX: indexing, reshape, pad.
@@ -184,7 +229,7 @@ def pixel_encode(obs, state, agent_idx, num_envs, atlas):
         atlas: SpriteAtlas instance.
 
     Returns:
-        (num_envs, 3, PIXEL_MAX_H, PIXEL_MAX_W) float32 in [0, 1].
+        (num_envs, 1, PIXEL_MAX_H, PIXEL_MAX_W) uint8 palette indices.
     """
     p = _MAZE_MAP_PADDING
     maze_map = state.maze_map[:, p:-p, p:-p, :]  # (num_envs, H, W, 3)
@@ -212,22 +257,44 @@ def pixel_encode(obs, state, agent_idx, num_envs, atlas):
     is_agent = (obj_types == 10)
     tile_indices = jnp.where(is_agent, agent_tiles, jnp.where(is_pot, pot_tiles, base_tiles))
 
-    # Gather from atlas: (num_envs, H, W) -> (num_envs, H, W, T, T, 3)
+    # Gather palette-indexed tiles: (num_envs, H, W) -> (num_envs, H, W, T, T)
     T = atlas.tile_size
-    tiles = atlas.atlas[tile_indices]
+    tiles = atlas.indexed_atlas[tile_indices]  # uint8 palette indices
 
     # Merge tile pixels into full image
-    # (num_envs, H, W, T, T, 3) -> (num_envs, H, T, W, T, 3) -> (num_envs, H*T, W*T, 3)
-    img = tiles.transpose(0, 1, 3, 2, 4, 5).reshape(num_envs, H * T, W * T, 3)
+    # (num_envs, H, W, T, T) -> (num_envs, H, T, W, T) -> (num_envs, H*T, W*T)
+    img = tiles.transpose(0, 1, 3, 2, 4).reshape(num_envs, H * T, W * T)
 
     # Pad smaller layouts to max pixel size
     pad_h = PIXEL_MAX_H - H * T
     pad_w = PIXEL_MAX_W - W * T
     if pad_h > 0 or pad_w > 0:
-        img = jnp.pad(img, ((0, 0), (0, pad_h), (0, pad_w), (0, 0)))
+        img = jnp.pad(img, ((0, 0), (0, pad_h), (0, pad_w)))
 
-    # Transpose to CHW
-    return img.transpose(0, 3, 1, 2)
+    # Add channel dim: (num_envs, 1, H, W) — single-channel palette indices
+    return img[:, None, :, :]
+
+
+def palette_decode(palette, obs_indices):
+    """Decode palette-indexed obs to float32 RGB for CNN input.
+
+    Called inside the network forward pass. Converts compact uint8 palette
+    indices (1 byte/pixel) to float32 RGB (12 bytes/pixel) just-in-time,
+    keeping the trajectory storage 12× smaller.
+
+    Args:
+        palette: (num_colors, 3) float32 in [0, 1] — color lookup table.
+        obs_indices: (..., 1, H, W) uint8 palette indices.
+
+    Returns:
+        (..., 3, H, W) float32 RGB image in [0, 1], ready for CNN.
+    """
+    # Remove channel dim: (..., 1, H, W) -> (..., H, W)
+    idx = obs_indices[..., 0, :, :]
+    # Gather RGB: (..., H, W) -> (..., H, W, 3)
+    rgb = palette[idx.astype(jnp.int32)]
+    # Transpose to CHW: (..., H, W, 3) -> (..., 3, H, W)
+    return jnp.moveaxis(rgb, -1, -3)
 
 
 def _egocentric_single(obs, agent_pos, agent_dir_idx):
@@ -334,8 +401,9 @@ class ObsEncoder:
         mode: "egocentric", "full", or "pixel".
             - egocentric: 7x7 crop centered on agent, rotated. Output: (num_envs, 1274).
             - full: full padded grid image. Output: (num_envs, 26, 5, 9).
-            - pixel: pre-rendered sprite images matching the human visualizer.
-                     Output: (num_envs, 3, 160, 288).
+            - pixel: palette-indexed 16×16 sprite images matching the human visualizer.
+                     Output: (num_envs, 1, 80, 144) uint8.
+                     CNN decodes to RGB via palette lookup at forward-pass time.
     """
 
     def __init__(self, mode="egocentric"):
@@ -349,8 +417,8 @@ class ObsEncoder:
             self.obs_shape = FULL_OBS_SHAPE  # (26, 5, 9) for CNN
         else:  # pixel
             self.atlas = SpriteAtlas()
-            self.obs_flat_dim = 3 * PIXEL_MAX_H * PIXEL_MAX_W  # 138240
-            self.obs_shape = PIXEL_OBS_SHAPE  # (3, 160, 288) for CNN
+            self.obs_flat_dim = PIXEL_MAX_H * PIXEL_MAX_W  # 11520
+            self.obs_shape = PIXEL_OBS_SHAPE  # (1, 80, 144) palette-indexed
 
     def encode(self, obs, state, agent_idx, num_envs):
         """Encode observations.
@@ -364,7 +432,7 @@ class ObsEncoder:
         Returns:
             If mode="egocentric": (num_envs, 1274) float32 flat vector.
             If mode="full": (num_envs, 26, 5, 9) float32 CHW image.
-            If mode="pixel": (num_envs, 3, 160, 288) float32 CHW image.
+            If mode="pixel": (num_envs, 1, 80, 144) uint8 palette indices.
         """
         if self.mode == "egocentric":
             return egocentric_encode(obs, state, agent_idx, num_envs)
