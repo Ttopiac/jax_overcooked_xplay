@@ -164,9 +164,10 @@ def make_parallel_sp_train(config):
             ck_idx = jnp.clip(update_idx // ck_interval, 0, num_ckpts - 1)
             is_boundary = (update_idx % ck_interval == 0)
 
-            # Print progress every checkpoint interval (prints from inside JIT/scan)
+            # Progress printing (configurable interval, default: every checkpoint)
+            print_interval = config.get("print_interval", ck_interval)
             jax.lax.cond(
-                is_boundary,
+                (update_idx % print_interval == 0) | (update_idx == num_updates - 1),
                 lambda: jax.debug.print(
                     "    update {u}/{t}: reward={r:.2f} sparse={s:.2f}",
                     u=update_idx + 1, t=num_updates, r=mean_reward, s=mean_sparse,

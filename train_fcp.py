@@ -201,9 +201,23 @@ def make_fcp_train(config, network, encoder, reward_shaper, partner_network=None
             )
 
             sparse_all = jnp.concatenate(all_sparse, axis=1)
+            mean_reward = jnp.mean(traj_batch.reward.sum(axis=0))
+            mean_sparse = jnp.mean(sparse_all.sum(axis=0))
+
+            # Progress printing at every print_interval (default: every ~10% of training)
+            print_interval = config.get("print_interval", max(1, config["num_updates"] // 10))
+            jax.lax.cond(
+                (update_idx % print_interval == 0) | (update_idx == config["num_updates"] - 1),
+                lambda: jax.debug.print(
+                    "    update {u}/{t}: reward={r:.2f} sparse={s:.2f}",
+                    u=update_idx + 1, t=config["num_updates"], r=mean_reward, s=mean_sparse,
+                ),
+                lambda: None,
+            )
+
             metrics = {
-                "mean_reward": jnp.mean(traj_batch.reward.sum(axis=0)),
-                "mean_sparse_reward": jnp.mean(sparse_all.sum(axis=0)),
+                "mean_reward": mean_reward,
+                "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
             return (train_state, all_env_states, all_obs, rng), metrics
@@ -288,11 +302,15 @@ def main():
     print(f"[FCP] N={args.num_agents}, X={args.num_unseen}, mode={args.xplay_mode}")
 
     # Load per-seed SP population with per-layout H/M/L selection
+    # SP Pop may have fewer seeds than ego seeds; cycle if needed
     from evaluate import categorize_by_skill_per_layout
+    import glob
+    n_pop_seeds = len(glob.glob("checkpoints/sp_pop_seed*_layout_scores.pkl"))
     all_pool_params = []
     for seed in seeds:
-        pop_path = f"checkpoints/sp_pop_seed{seed}.pkl"
-        scores_path = f"checkpoints/sp_pop_seed{seed}_layout_scores.pkl"
+        pop_seed = seed % n_pop_seeds if n_pop_seeds > 0 else seed
+        pop_path = f"checkpoints/sp_pop_seed{pop_seed}.pkl"
+        scores_path = f"checkpoints/sp_pop_seed{pop_seed}_layout_scores.pkl"
         print(f"  Loading {pop_path} + {scores_path}")
         with open(pop_path, "rb") as f:
             pop_data = pickle.load(f)

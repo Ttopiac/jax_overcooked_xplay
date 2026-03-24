@@ -244,8 +244,19 @@ def make_mep_pop_train(config):
                 ckpt_all_params, new_all_params,
             )
 
+            mean_reward = round_rewards.mean()
+            print_interval = max(1, num_rounds // 10)
+            jax.lax.cond(
+                (round_idx % print_interval == 0) | (round_idx == num_rounds - 1),
+                lambda: jax.debug.print(
+                    "    [POP] round {r}/{t}: reward={v:.2f}",
+                    r=round_idx + 1, t=num_rounds, v=mean_reward,
+                ),
+                lambda: None,
+            )
+
             return (new_all_params, new_all_opt_states, all_env_states, all_obs, rng, ckpt_all_params), {
-                "mean_reward": round_rewards.mean()
+                "mean_reward": mean_reward
             }
 
         init_carry = (all_params, all_opt_states, all_env_states, all_obs, rng, ckpt_all_params)
@@ -433,9 +444,22 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
             train_state, loss_info = ppo_update(train_state, flat_batch, flat_adv, flat_ret, config, update_rng)
 
             sparse_all = jnp.concatenate(all_sparse, axis=1)
+            mean_reward = jnp.mean(traj_batch.reward.sum(axis=0))
+            mean_sparse = jnp.mean(sparse_all.sum(axis=0))
+
+            print_interval = max(1, config["ego_num_updates"] // 10)
+            jax.lax.cond(
+                (update_idx % print_interval == 0) | (update_idx == config["ego_num_updates"] - 1),
+                lambda: jax.debug.print(
+                    "    [EGO] update {u}/{t}: reward={r:.2f} sparse={s:.2f}",
+                    u=update_idx + 1, t=config["ego_num_updates"], r=mean_reward, s=mean_sparse,
+                ),
+                lambda: None,
+            )
+
             metrics = {
-                "mean_reward": jnp.mean(traj_batch.reward.sum(axis=0)),
-                "mean_sparse_reward": jnp.mean(sparse_all.sum(axis=0)),
+                "mean_reward": mean_reward,
+                "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
             return (train_state, all_env_states, all_obs, rng, partner_metrics), metrics
