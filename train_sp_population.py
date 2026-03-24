@@ -157,12 +157,22 @@ def make_parallel_sp_train(config):
                 train_state, flat_batch, flat_adv, flat_ret, config, update_rng
             )
 
-            # Checkpoint logic
+            # Checkpoint logic + progress printing
             mean_reward = jnp.mean(traj_batch.reward.sum(axis=0))
             sparse_all = jnp.concatenate(all_sparse, axis=1)
             mean_sparse = jnp.mean(sparse_all.sum(axis=0))
             ck_idx = jnp.clip(update_idx // ck_interval, 0, num_ckpts - 1)
             is_boundary = (update_idx % ck_interval == 0)
+
+            # Print progress every checkpoint interval (prints from inside JIT/scan)
+            jax.lax.cond(
+                is_boundary,
+                lambda: jax.debug.print(
+                    "    update {u}/{t}: reward={r:.2f} sparse={s:.2f}",
+                    u=update_idx + 1, t=num_updates, r=mean_reward, s=mean_sparse,
+                ),
+                lambda: None,
+            )
 
             ckpt_params = jax.tree.map(
                 lambda ck, p: ck.at[ck_idx].set(jnp.where(is_boundary, p, ck[ck_idx])),
