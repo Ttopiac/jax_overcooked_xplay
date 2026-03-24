@@ -305,8 +305,20 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
         # Per-layout, per-position metrics: (n_layouts, 2, pop_size)
         partner_metrics = jnp.zeros((n_layouts, 2, pop_size))
 
+        # Intermediate eval checkpoints
+        num_evals = config.get("num_evals", 0)
+        ego_updates = config["ego_num_updates"]
+        if num_evals > 0:
+            eval_interval = max(1, ego_updates // num_evals)
+            eval_ckpt_params = jax.tree.map(
+                lambda p: jnp.zeros((num_evals, *p.shape)), train_state.params
+            )
+        else:
+            eval_interval = ego_updates + 1
+            eval_ckpt_params = None
+
         def _update_step(runner_state, update_idx):
-            train_state, all_env_states, all_obs, rng, partner_metrics = runner_state
+            train_state, all_env_states, all_obs, rng, partner_metrics, _eval_ckpts = runner_state
 
             # Step 1: Evaluate ego vs pop for each (layout, position)
             rng, eval_rng = jax.random.split(rng)
@@ -457,16 +469,28 @@ def make_mep_ego_train(config, network, encoder, reward_shaper):
                 lambda: None,
             )
 
+            # Save eval checkpoint
+            if num_evals > 0:
+                eval_idx = jnp.clip(update_idx // eval_interval, 0, num_evals - 1)
+                is_eval_point = (update_idx % eval_interval == 0)
+                _eval_ckpts = jax.tree.map(
+                    lambda ck, p: ck.at[eval_idx].set(jnp.where(is_eval_point, p, ck[eval_idx])),
+                    _eval_ckpts, train_state.params,
+                )
+
             metrics = {
                 "mean_reward": mean_reward,
                 "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
-            return (train_state, all_env_states, all_obs, rng, partner_metrics), metrics
+            return (train_state, all_env_states, all_obs, rng, partner_metrics, _eval_ckpts), metrics
 
-        runner_state = (train_state, all_env_states, all_obs, rng, partner_metrics)
+        runner_state = (train_state, all_env_states, all_obs, rng, partner_metrics, eval_ckpt_params)
         runner_state, metrics = jax.lax.scan(_update_step, runner_state, jnp.arange(config["ego_num_updates"]))
-        return {"train_state": runner_state[0], "metrics": metrics}
+        result = {"train_state": runner_state[0], "metrics": metrics}
+        if num_evals > 0:
+            result["eval_ckpt_params"] = runner_state[5]
+        return result
 
     return jax.jit(train)
 
@@ -508,6 +532,7 @@ def get_config(args):
         "priority_alpha": args.priority_alpha,
         "num_eval_envs": getattr(args, "num_eval_envs", 8),
         "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
+        "num_evals": getattr(args, "num_evals", 0),
     }
 
 
@@ -547,6 +572,8 @@ def main():
     parser.add_argument("--num-eval-envs", type=int, default=8,
                         help="Parallel eval envs per pop member for ego eval-based sampling")
     parser.add_argument("--obs-encoding", type=str, default="egocentric")
+    parser.add_argument("--num-evals", type=int, default=0,
+                        help="Number of intermediate eval points during ego training (0=eval only at end)")
     parser.add_argument("--reward-mode", type=str, default="originaler")
     parser.add_argument("--reward-shaping-factor", type=float, default=1.0)
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))

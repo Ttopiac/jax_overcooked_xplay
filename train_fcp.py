@@ -77,8 +77,19 @@ def make_fcp_train(config, network, encoder, reward_shaper, partner_network=None
         all_env_states = tuple(all_env_states)
         all_obs = tuple(all_obs)
 
+        # Intermediate checkpoints for eval (independent of training checkpoints)
+        num_evals = config.get("num_evals", 0)
+        if num_evals > 0:
+            eval_interval = max(1, config["num_updates"] // num_evals)
+            eval_ckpt_params = jax.tree.map(
+                lambda p: jnp.zeros((num_evals, *p.shape)), train_state.params
+            )
+        else:
+            eval_interval = config["num_updates"] + 1  # never triggers
+            eval_ckpt_params = None
+
         def _update_step(runner_state, update_idx):
-            train_state, all_env_states, all_obs, rng = runner_state
+            train_state, all_env_states, all_obs, rng, _eval_ckpts = runner_state
 
             rng, partner_rng, shuffle_rng = jax.random.split(rng, 3)
 
@@ -215,18 +226,30 @@ def make_fcp_train(config, network, encoder, reward_shaper, partner_network=None
                 lambda: None,
             )
 
+            # Save eval checkpoint at eval_interval
+            if num_evals > 0:
+                eval_idx = jnp.clip(update_idx // eval_interval, 0, num_evals - 1)
+                is_eval_point = (update_idx % eval_interval == 0)
+                _eval_ckpts = jax.tree.map(
+                    lambda ck, p: ck.at[eval_idx].set(jnp.where(is_eval_point, p, ck[eval_idx])),
+                    _eval_ckpts, train_state.params,
+                )
+
             metrics = {
                 "mean_reward": mean_reward,
                 "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
             }
-            return (train_state, all_env_states, all_obs, rng), metrics
+            return (train_state, all_env_states, all_obs, rng, _eval_ckpts), metrics
 
-        runner_state = (train_state, all_env_states, all_obs, rng)
+        runner_state = (train_state, all_env_states, all_obs, rng, eval_ckpt_params)
         runner_state, metrics = jax.lax.scan(
             _update_step, runner_state, jnp.arange(config["num_updates"])
         )
-        return {"train_state": runner_state[0], "metrics": metrics}
+        result = {"train_state": runner_state[0], "metrics": metrics}
+        if num_evals > 0:
+            result["eval_ckpt_params"] = runner_state[4]
+        return result
 
     return jax.jit(train)
 
@@ -261,6 +284,7 @@ def get_config(args):
         "reward_shaping_factor": args.reward_shaping_factor,
         "reward_shaping_horizon": args.reward_shaping_horizon,
         "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
+        "num_evals": getattr(args, "num_evals", 0),
     }
 
 
@@ -293,6 +317,8 @@ def main():
     parser.add_argument("--reward-shaping-horizon", type=float, default=float("inf"))
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full", "pixel"])
+    parser.add_argument("--num-evals", type=int, default=0,
+                        help="Number of intermediate eval points during training (0=eval only at end)")
     setup_wandb_args(parser)
     args = parser.parse_args()
 
@@ -407,6 +433,19 @@ def main():
         logger.log_training_curves(metrics_i, prefix="train")
         logger.log_summary({"final_reward": r, "final_sparse": sr, "train_time_s": elapsed})
         logger.finish()
+
+    # Evaluate intermediate checkpoints if --num-evals was set
+    if config.get("num_evals", 0) > 0 and "eval_ckpt_params" in results:
+        from eval_during_training import eval_checkpoints
+        print(f"\n[FCP] Evaluating {config['num_evals']} intermediate checkpoints (seed 0)...")
+        eval_ckpts_seed0 = jax.device_get(
+            jax.tree.map(lambda x: x[0], results["eval_ckpt_params"])
+        )
+        num_evals = config["num_evals"]
+        eval_interval = max(1, config["num_updates"] // num_evals)
+        steps_per_update = args.num_steps * config["num_envs_per_layout"] * len(LAYOUT_NAMES)
+        labels = [f"{(i+1) * eval_interval * steps_per_update / 1e6:.0f}M" for i in range(num_evals)]
+        eval_checkpoints(eval_ckpts_seed0, network, encoder, LAYOUT_NAMES, labels=labels)
 
     print(f"[FCP] Done in {elapsed:.1f}s ({elapsed/60:.1f} min)")
 

@@ -56,8 +56,19 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
 
         bc_horizon_steps = config["bc_anneal_horizon"]
 
+        # Intermediate eval checkpoints
+        num_evals = config.get("num_evals", 0)
+        if num_evals > 0:
+            eval_interval = max(1, config["num_updates"] // num_evals)
+            eval_ckpt_params = jax.tree.map(
+                lambda p: jnp.zeros((num_evals, *p.shape)), train_state.params
+            )
+        else:
+            eval_interval = config["num_updates"] + 1
+            eval_ckpt_params = None
+
         def _update_step(runner_state, update_idx):
-            train_state, all_env_states, all_obs, rng, cumulative_steps = runner_state
+            train_state, all_env_states, all_obs, rng, cumulative_steps, _eval_ckpts = runner_state
 
             # bc_factor annealing
             bc_factor = jnp.where(bc_horizon_steps <= 0, 1.0,
@@ -182,18 +193,30 @@ def make_bcp_train(config, ego_network, bc_network, encoder, reward_shaper, n_bc
                 lambda: None,
             )
 
+            # Save eval checkpoint
+            if num_evals > 0:
+                eval_idx = jnp.clip(update_idx // eval_interval, 0, num_evals - 1)
+                is_eval_point = (update_idx % eval_interval == 0)
+                _eval_ckpts = jax.tree.map(
+                    lambda ck, p: ck.at[eval_idx].set(jnp.where(is_eval_point, p, ck[eval_idx])),
+                    _eval_ckpts, train_state.params,
+                )
+
             metrics = {
                 "mean_reward": mean_reward,
                 "mean_sparse_reward": mean_sparse,
                 "total_loss": loss_info["total_loss"],
                 "bc_factor": bc_factor,
             }
-            return (train_state, all_env_states, all_obs, rng, cumulative_steps), metrics
+            return (train_state, all_env_states, all_obs, rng, cumulative_steps, _eval_ckpts), metrics
 
         cumulative_steps = jnp.int32(0)
-        runner_state = (train_state, all_env_states, all_obs, rng, cumulative_steps)
+        runner_state = (train_state, all_env_states, all_obs, rng, cumulative_steps, eval_ckpt_params)
         runner_state, metrics = jax.lax.scan(_update_step, runner_state, jnp.arange(config["num_updates"]))
-        return {"train_state": runner_state[0], "metrics": metrics}
+        result = {"train_state": runner_state[0], "metrics": metrics}
+        if num_evals > 0:
+            result["eval_ckpt_params"] = runner_state[5]
+        return result
 
     return jax.jit(train)
 
@@ -226,6 +249,7 @@ def get_config(args):
         "reward_shaping_horizon": args.reward_shaping_horizon,
         "bc_anneal_horizon": args.bc_anneal_horizon,
         "obs_encoding": getattr(args, "obs_encoding", "egocentric"),
+        "num_evals": getattr(args, "num_evals", 0),
     }
 
 
@@ -256,6 +280,8 @@ def main():
     parser.add_argument("--bc-anneal-horizon", type=int, default=8000)
     parser.add_argument("--obs-encoding", type=str, default="egocentric",
                         choices=["egocentric", "full", "pixel"])
+    parser.add_argument("--num-evals", type=int, default=0,
+                        help="Number of intermediate eval points during training (0=eval only at end)")
     setup_wandb_args(parser)
     args = parser.parse_args()
 
