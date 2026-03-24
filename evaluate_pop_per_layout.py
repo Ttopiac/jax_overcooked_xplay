@@ -78,8 +78,11 @@ def evaluate_pop_per_layout(all_flat_params, network, encoder, num_envs=32, batc
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate SP pop checkpoints per layout")
+    parser = argparse.ArgumentParser(description="Evaluate population checkpoints per layout")
     parser.add_argument("--seeds", type=str, default="0", help="Comma-separated seeds")
+    parser.add_argument("--pop-type", type=str, default="sp_pop",
+                        choices=["sp_pop", "mep16_pop", "mep8_pop"],
+                        help="Population type to evaluate")
     parser.add_argument("--num-envs", type=int, default=32, help="Parallel episodes per eval")
     parser.add_argument("--batch-size", type=int, default=16, help="Agents per JIT batch")
     args = parser.parse_args()
@@ -87,15 +90,15 @@ def main():
     seeds = [int(s) for s in args.seeds.split(",")]
 
     for seed in seeds:
-        pop_path = f"checkpoints/sp_pop_seed{seed}.pkl"
-        out_path = f"checkpoints/sp_pop_seed{seed}_layout_scores.pkl"
+        pop_path = f"checkpoints/{args.pop_type}_seed{seed}.pkl"
+        out_path = f"checkpoints/{args.pop_type}_seed{seed}_layout_scores.pkl"
 
-        print(f"[EVAL-PER-LAYOUT] seed {seed}: loading {pop_path}")
+        print(f"[EVAL-PER-LAYOUT] {args.pop_type} seed {seed}: loading {pop_path}")
         with open(pop_path, "rb") as f:
             pop_data = pickle.load(f)
 
-        ckpt_params = pop_data["ckpt_params"]
-        config = pop_data["config"]
+        # Handle different checkpoint formats
+        config = pop_data.get("config", {})
         obs_enc = config.get("obs_encoding", "egocentric")
         encoder = ObsEncoder(mode=obs_enc)
         if obs_enc == "pixel":
@@ -103,15 +106,24 @@ def main():
         elif obs_enc == "full":
             network = CNNActorCritic(action_dim=6)
         else:
-            hidden_dims = config["hidden_dims"] if "hidden_dims" in config else (256, 256)
+            hidden_dims = config.get("hidden_dims", (256, 256))
             network = ActorCritic(action_dim=6, hidden_dims=hidden_dims)
 
-        # Flatten: (pop_size, num_ckpts, ...) -> (pop_size * num_ckpts, ...)
-        flat_params = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), ckpt_params)
-        n_total = jax.tree.leaves(flat_params)[0].shape[0]
-        pop_size = jax.tree.leaves(ckpt_params)[0].shape[0]
-        num_ckpts = jax.tree.leaves(ckpt_params)[0].shape[1]
-        print(f"  {pop_size} agents × {num_ckpts} ckpts = {n_total} total")
+        # SP Pop: ckpt_params (pop_size, num_ckpts, ...)
+        # MEP Pop: ckpt_params (pop_size, 3, ...) or all_params (pop_size, ...)
+        if "ckpt_params" in pop_data:
+            ckpt_params = pop_data["ckpt_params"]
+            flat_params = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), ckpt_params)
+            pop_size = jax.tree.leaves(ckpt_params)[0].shape[0]
+            num_ckpts = jax.tree.leaves(ckpt_params)[0].shape[1]
+            n_total = pop_size * num_ckpts
+            print(f"  {pop_size} agents × {num_ckpts} ckpts = {n_total} total")
+        elif "all_params" in pop_data:
+            flat_params = pop_data["all_params"]
+            n_total = jax.tree.leaves(flat_params)[0].shape[0]
+            print(f"  {n_total} agents (final params only)")
+        else:
+            raise ValueError(f"Unknown pop format: {list(pop_data.keys())}")
 
         t0 = time.time()
         layout_scores = evaluate_pop_per_layout(

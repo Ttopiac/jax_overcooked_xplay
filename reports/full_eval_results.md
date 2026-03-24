@@ -1,4 +1,4 @@
-# Full Evaluation Results: Run 3 (MLP) vs Run 4 (Pixel CNN)
+# Run 3 & Run 4 Cross-Play Evaluation
 
 ## H/M/L Definition (per layout, per population)
 
@@ -7,7 +7,9 @@ For a given population (e.g., SP Pop seed 3 with 560 agents) and a given layout 
 - **M** = the 1 agent whose score is closest to 50% of H's score on that layout
 - **L** = the 1 agent with the lowest score on that layout
 
-Different layouts pick different agents as H/M/L. This matches exactly how FCP training selects partners via `categorize_by_skill_per_layout`. The same definition is applied to SP Pop, MEP-16 Pop, and MEP-8 Pop for consistent evaluation.
+Different layouts pick different agents as H/M/L. This matches how FCP training selects partners via `categorize_by_skill_per_layout`.
+
+**Applied consistently to all populations for evaluation:** SP Pop, MEP-16 Pop, and MEP-8 Pop all use the same per-layout H/M/L definition. Note that MEP training itself does NOT use H/M/L categories (it uses prioritized sampling from the full pop), but we apply H/M/L for evaluation to enable standardized comparison across all partner types.
 
 ## Agents
 
@@ -80,7 +82,7 @@ Different layouts pick different agents as H/M/L. This matches exactly how FCP t
 
 ---
 
-## Table A: Self-Play
+## Table A: Self-Play (Run 3 MLP vs Run 4 Pixel)
 
 Each ego seed plays with a copy of itself. Same encoder for both agents. Averaged across seeds.
 
@@ -95,7 +97,7 @@ Each ego seed plays with a copy of itself. Same encoder for both agents. Average
 
 ---
 
-## Tables B1-B5: Cross-Play vs Populations
+## Tables B1-B5: Cross-Play vs Unseen Populations (Run 3 MLP & Run 4 Pixel ego vs Pop seeds 3,4)
 
 One table per layout. Each cell computed as:
 
@@ -166,9 +168,9 @@ For BC: no H/M/L tiers. Ego plays with all 9 BC agents from each seed, averages 
 
 ---
 
-## Table C: Cross-Play vs Run 3 Ego Agents
+## Table C: Cross-Play Run 4 Pixel FCP Ego vs Run 3 MLP Ego Agents
 
-Pixel FCP ego (Run 4) plays against each Run 3 ego agent. Dual encoder: pixel for ego, egocentric for partner.
+Pixel FCP ego (Run 4) plays against each Run 3 MLP ego agent. Dual encoder: pixel for Run 4 ego, egocentric for Run 3 partner.
 
 How each cell is computed:
 1. Pixel ego seed `s` plays with Run 3 ego seed `p` → per-layout scores
@@ -188,7 +190,7 @@ BCP ego only trained on cramped, asymm, coord — forced and counter marked (—
 
 ---
 
-## Table D: Overall Summary
+## Table D: Overall Summary (Run 3 MLP vs Run 4 Pixel)
 
 Mean across all 5 layouts (3 layouts for BCP-related cells).
 
