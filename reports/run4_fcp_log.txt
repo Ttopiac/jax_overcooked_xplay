@@ -1,0 +1,287 @@
+[2026-03-24 09:54] === FCP Pixel Ego Training (6 seeds, 100M steps) ===
+[2026-03-24 09:54] Training FCP ego...
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/nathan/.netrc.
+wandb: Currently logged in as: ttopiac (chli4608) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run rrcfiuvm
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141414-rrcfiuvm
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed0
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/rrcfiuvm
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▂▃▅▅▅▅▅▅▆▆▇▅▅▆▇▆▅▇▆▅▅▅▆▆█▅▇▆▆▇▆▇▄▆▇▇▇▅▇
+wandb: train/mean_sparse_reward ▃▃▄▄▆▁▃▄▅▆▂▄▃▄▅▄██▇▆▆▆▅▄▆▇▆▄▅▄▂▃█▆▆▃▅▄▇▇
+wandb:         train/total_loss ▁▆▄▇▄▄▄▇▇▄▅▄▅██▄█▄▄▄▇▄▄▄▄▄▄▄▄▅▄▄▅▄▄▄█▅▄▄
+wandb:                   update ▂▂▃▃▃▃▄▄▆▇▇▇▁▁▂▂▃▃▄▅▆▆▆▆▇▂▃▃▃▃▃▃▄▄▄▅▅▅▆█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 205.9881
+wandb:             final_sparse 177.2381
+wandb:        train/mean_reward 205.9881
+wandb: train/mean_sparse_reward 177.2381
+wandb:         train/total_loss 8.72573
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed0 at: https://wandb.ai/chli4608/overcooked-xplay/runs/rrcfiuvm
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141414-rrcfiuvm/logs
+wandb: setting up run o5wqivmn
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141417-o5wqivmn
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed1
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/o5wqivmn
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▁▁▆▆▇▆▆▇▇▇█▇▇▇▇████▇▇▇██▇▇▇▇▇█▇▇▇▇██▇█▇
+wandb: train/mean_sparse_reward ▁▅▅▆▆▆▇▇▇▆▆▇▆▆▇▇▇▇█▆█▇▆▇▆█▇▆▇▇▇▇█▆▇▇▇▇▇█
+wandb:         train/total_loss ▁▇▃▃▃▃▇▄▅█▄▃▄▄▃▄▇▄▄███▄▇▄▄▄▅▇██▄▄▄▄▅█▄▄▄
+wandb:                   update ▁▁▂▂▂▃▄▅▅▅▅▆▆▇▇█████▂▂▃▃▄▆▇▇▇▇█▁▁▃▃▅▆▆▆▇
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 195.53572
+wandb:             final_sparse 168.85715
+wandb:        train/mean_reward 195.53572
+wandb: train/mean_sparse_reward 168.85715
+wandb:         train/total_loss 10.43096
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed1 at: https://wandb.ai/chli4608/overcooked-xplay/runs/o5wqivmn
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141417-o5wqivmn/logs
+wandb: setting up run 1hoiqxc9
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141421-1hoiqxc9
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed2
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/1hoiqxc9
+wandb: updating run metadata; uploading summary
+wandb: uploading summary; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading summary
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▂▃▇▆▆▇▆▆▇▇▇▆▇█▇███▇▇▇███▇██▇▇▇▇███▇▇█▇█
+wandb: train/mean_sparse_reward ▁▂▅▅▅▅▅▅▄▅▅▆▆▅▆▇▆▅▆▇▇█▇██▇▅▇▆▆▇▇▇▇▆▆▇▇▆▅
+wandb:         train/total_loss ▁▁▂▄▇▄▄▄▄▆▄▇▄▄▇▇▄▆▄▄▄▄▄▆▄█▅▅▇▇▄▄▇▄▄▆▇▄▄▅
+wandb:                   update ▃▃▃▃▄▄▄▅▅▅▆▇█▁▂▂▂▃▃▄▄▄▅▅▅▇▇▁▁▃▄▄▄▄▄▅▆▇██
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 205.42619
+wandb:             final_sparse 177.04762
+wandb:        train/mean_reward 205.42619
+wandb: train/mean_sparse_reward 177.04762
+wandb:         train/total_loss 10.15332
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed2 at: https://wandb.ai/chli4608/overcooked-xplay/runs/1hoiqxc9
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141421-1hoiqxc9/logs
+wandb: setting up run 2x2c6tmy
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141424-2x2c6tmy
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed3
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/2x2c6tmy
+wandb: updating run metadata; uploading summary
+wandb: uploading summary; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▇▇▆▇▇▇█▇█▇▇▇▇██▇▇▇▇█▇██▇▇▇▆▇▇▇▇▇█▇▇██▇▇
+wandb: train/mean_sparse_reward ▁▃▅▄▅▆▅▆▆▇█▆▆█▇▆▆▇▇▇▆▇▆█▅▇▇▆▆▅▇▇▇▆▇▆▆▅█▅
+wandb:         train/total_loss ▁▁▂▆▂▃█▇▂▂▂▃▆▃▃▂▃▃▃▃▂▂▃▃▃▃▂▂▃▃█▂█▃▇▃▃▂▂▇
+wandb:                   update ▁▁▂▂▂▃▃▄▄▄▅▆▇██▂▃▃▃▅▆▆▆▆▆▇█▂▂▃▃▃▄▄▅▆▆▇▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 212.29524
+wandb:             final_sparse 183.90477
+wandb:        train/mean_reward 212.29524
+wandb: train/mean_sparse_reward 183.90477
+wandb:         train/total_loss 10.43691
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed3 at: https://wandb.ai/chli4608/overcooked-xplay/runs/2x2c6tmy
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141424-2x2c6tmy/logs
+wandb: setting up run cgv06go8
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141427-cgv06go8
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed4
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/cgv06go8
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▅▆▄▃▃▅▄▄▅▅▅▄▆▇▁▄▃▃▅▆█▄▆▅▄▅▄▅▃▂▇▄▄▃▄▅▄▅▅▇
+wandb: train/mean_sparse_reward ▁▆▆▅▅▆▄▆▇▅▅▇▇▅▇▆▅▆▆▇▅▆▅█▇█▇▆▅▆▇▆▇▅▅▅▇█▆▆
+wandb:         train/total_loss ▃▂▃▃▂▆▇▆▇▂▂▁▁▂▂▂▃▄▂▃▇▂▂▂▃█▆▆▃▃▂▃▃▃▂▆▂▃▂▂
+wandb:                   update ▂▂▃▃▄▅▅▅██▂▂▃▃▃▄▄▅▅▅▅▅▅▇▇▁▁▂▂▂▃▃▃▃▄▄▅▆▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 190.67143
+wandb:             final_sparse 165.52382
+wandb:        train/mean_reward 190.67143
+wandb: train/mean_sparse_reward 165.52382
+wandb:         train/total_loss 10.25872
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed4 at: https://wandb.ai/chli4608/overcooked-xplay/runs/cgv06go8
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141427-cgv06go8/logs
+wandb: setting up run hgvdo40p
+wandb: Tracking run with wandb version 0.25.1
+wandb: Run data is saved locally in /home/nathan/jax_overcooked_xplay/wandb/run-20260324_141429-hgvdo40p
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run fcp_n2x1_hetero_seed5
+wandb: ⭐️ View project at https://wandb.ai/chli4608/overcooked-xplay
+wandb: 🚀 View run at https://wandb.ai/chli4608/overcooked-xplay/runs/hgvdo40p
+wandb: updating run metadata; uploading summary
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-2855, summary
+wandb: 
+wandb: Run history:
+wandb:        train/mean_reward ▁▆▇▇▇▇▇█▇▇▇▇▇▇█▇▇▇█▇█▇▇▇▇██▇▇█▇██▇█▇▇▇▇█
+wandb: train/mean_sparse_reward ▁▂▃▃▄▄▄▅▆▃▄▆▅▅▆▅▅▅█▅▅▃▆▆▄▇▅▅▄▅▆▅▄▇▅▅▅▄▆▅
+wandb:         train/total_loss ▁▁▃▃▃▃▆▄▄▆▃▇▄▃▃▄▇▇▄▃▃▃▃▃▃▃▃▄▃▃▄▇▃▃▃▄▄█▄▃
+wandb:                   update ▁▂▂▂▂▄▄▄▅▆▇▇▁▂▃▄▄▄▆▆▁▁▁▂▂▂▂▂▂▃▄▄▄▄▅▆▇▇▇█
+wandb: 
+wandb: Run summary:
+wandb:             final_reward 213.03334
+wandb:             final_sparse 183.33334
+wandb:        train/mean_reward 213.03334
+wandb: train/mean_sparse_reward 183.33334
+wandb:         train/total_loss 9.49973
+wandb:             train_time_s 15594.60408
+wandb:                   update 951
+wandb: 
+wandb: 🚀 View run fcp_n2x1_hetero_seed5 at: https://wandb.ai/chli4608/overcooked-xplay/runs/hgvdo40p
+wandb: ⭐️ View project at: https://wandb.ai/chli4608/overcooked-xplay
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260324_141429-hgvdo40p/logs
+[FCP] N=2, X=1, mode=hetero
+  Loading checkpoints/sp_pop_seed0.pkl + checkpoints/sp_pop_seed0_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=220.0, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Loading checkpoints/sp_pop_seed1.pkl + checkpoints/sp_pop_seed1_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=220.0, L=0.0
+      counter_circuit: H=200.0, L=0.0
+  Loading checkpoints/sp_pop_seed2.pkl + checkpoints/sp_pop_seed2_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=201.2, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Loading checkpoints/sp_pop_seed3.pkl + checkpoints/sp_pop_seed3_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=200.0, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Loading checkpoints/sp_pop_seed4.pkl + checkpoints/sp_pop_seed4_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=200.0, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Loading checkpoints/sp_pop_seed0.pkl + checkpoints/sp_pop_seed0_layout_scores.pkl
+    Pool: 560 total -> per-layout (5 layouts × 3 H/M/L)
+      cramped_room: H=260.0, L=0.0
+      asymm_advantages: H=500.0, L=0.0
+      coord_ring: H=280.0, L=0.0
+      forced_coord: H=220.0, L=0.0
+      counter_circuit: H=180.0, L=0.0
+  Pool shape per seed: (5, 3, ...)
+[FCP] Training 6 seeds (952 updates, 100M)
+  seed 0: reward=205.9881, sparse=177.2381
+  seed 1: reward=195.5357, sparse=168.8571
+  seed 2: reward=205.4262, sparse=177.0476
+  seed 3: reward=212.2952, sparse=183.9048
+  seed 4: reward=190.6714, sparse=165.5238
+  seed 5: reward=213.0333, sparse=183.3333
+[FCP] Done in 15594.6s (259.9 min)
+[2026-03-24 14:14] FCP ego training done.
+[2026-03-24 14:14] Evaluating FCP ego self-play...
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed0.pkl
+  mean=25.5, {'cramped_room': 0.0, 'asymm_advantages': 27.708333333333332, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 100.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed0.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed1.pkl
+  mean=0.0, {'cramped_room': 0.0, 'asymm_advantages': 0.0, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed1.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed2.pkl
+  mean=0.0, {'cramped_room': 0.0, 'asymm_advantages': 0.0, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed2.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed3.pkl
+  mean=9.0, {'cramped_room': 0.0, 'asymm_advantages': 45.0, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed3.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed4.pkl
+  mean=0.0, {'cramped_room': 0.0, 'asymm_advantages': 0.0, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 0.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed4.json
+[EVAL] Self-play evaluation (ego): checkpoints/fcp_n2x1_hetero_seed5.pkl
+  mean=20.0, {'cramped_room': 0.0, 'asymm_advantages': 0.0, 'coord_ring': 0.0, 'forced_coord': 0.0, 'counter_circuit': 100.0}
+  Saved to reports/eval_results/fcp_ego_selfplay_pixel_seed5.json
+[2026-03-24 14:15] Evaluating FCP ego cross-play...
+[EVAL] Cross-play: ego=checkpoints/fcp_n2x1_hetero_seed0.pkl vs partner=checkpoints/sp_pop_seed3.pkl
+Traceback (most recent call last):
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 529, in <module>
+    main()
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 497, in main
+    results = evaluate_cross_play(ego_network, ego_params, partner_network, p_params,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 215, in evaluate_cross_play
+    r = float(eval_fn(key))
+              ^^^^^^^^^^^^
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 210, in eval_fn
+    return evaluate_episode(_env, network_ego, params_ego, network_partner, params_partner, encoder, key, num_envs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 84, in evaluate_episode
+    (_, _, total_sparse, _), _ = jax.lax.scan(
+                                 ^^^^^^^^^^^^^
+  File "/home/nathan/jax_overcooked_xplay/evaluate.py", line 71, in _step
+    pi_1, _ = network_b.apply(params_b, obs_1)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/jax_overcooked_xplay/networks.py", line 26, in __call__
+    actor = nn.Dense(dim, kernel_init=orthogonal(jnp.sqrt(2)))(actor)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/anaconda3/envs/jax_overcooked/lib/python3.12/site-packages/flax/linen/linear.py", line 251, in __call__
+    kernel = self.param(
+             ^^^^^^^^^^^
+flax.errors.ScopeParamShapeError: Initializer expected to generate shape (1274, 256) but got shape (72, 256) instead for parameter "kernel" in "/Dense_0". (https://flax.readthedocs.io/en/latest/api_reference/flax.errors.html#flax.errors.ScopeParamShapeError)
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
