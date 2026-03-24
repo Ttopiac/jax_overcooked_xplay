@@ -47,9 +47,9 @@ FULL_OBS_SHAPE = (FULL_CHANNELS, FULL_MAX_H, FULL_MAX_W)  # (26, 5, 9) CHW forma
 # Tile resolution: 16×16 sprites rendered from the same visualizer as humans see.
 # Stored as palette-indexed uint8 (1 byte/pixel) instead of float32 RGB (12 bytes/pixel)
 # for 12× VRAM savings, enabling batch_size=8 with 42 envs/layout.
-TILE_SIZE = 16
-PIXEL_MAX_H = FULL_MAX_H * TILE_SIZE  # 5 * 16 = 80
-PIXEL_MAX_W = FULL_MAX_W * TILE_SIZE  # 9 * 16 = 144
+TILE_SIZE = 8
+PIXEL_MAX_H = FULL_MAX_H * TILE_SIZE  # 5 * 8 = 40
+PIXEL_MAX_W = FULL_MAX_W * TILE_SIZE  # 9 * 8 = 72
 # Palette-indexed obs: (1, H, W) uint8 indices. CNN decodes to RGB via palette lookup.
 PIXEL_OBS_SHAPE = (1, PIXEL_MAX_H, PIXEL_MAX_W)
 

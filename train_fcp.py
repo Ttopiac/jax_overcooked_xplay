@@ -43,7 +43,9 @@ def categorize_checkpoints(ckpt_params, ckpt_rewards):
     return high, mid, low
 
 
-def make_fcp_train(config, network, encoder, reward_shaper):
+def make_fcp_train(config, network, encoder, reward_shaper, partner_network=None, partner_encoder=None):
+    """FCP training. Supports dual-encoder mode: ego uses one network/encoder,
+    partners use a different one (e.g., pixel CNN ego + egocentric MLP partners)."""
     num_agents = config["num_agents"]
     num_unseen = config["num_unseen"]
     num_ego = num_agents - num_unseen
@@ -111,26 +113,26 @@ def make_fcp_train(config, network, encoder, reward_shaper):
                     rng, action_rng, step_rng = jax.random.split(rng, 3)
                     action_rngs = jax.random.split(action_rng, num_agents)
 
-                    # Encode obs for all agents
-                    all_obs_encoded = [
-                        encoder.encode(obs, env_state, k, n_env_l)
-                        for k in range(num_agents)
-                    ]
+                    # Encode obs: ego encoder for ego agents, partner encoder for partners
+                    _p_enc = partner_encoder if partner_encoder is not None else encoder
+                    _p_net = partner_network if partner_network is not None else network
+                    ego_obs_encoded = [encoder.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
+                    partner_obs_encoded = [_p_enc.encode(obs, env_state, k, n_env_l) for k in range(num_agents)]
 
                     ego_transitions = []
                     actions_list = []
 
                     for k in range(num_ego):
-                        pi, val = network.apply(train_state.params, all_obs_encoded[k])
+                        pi, val = network.apply(train_state.params, ego_obs_encoded[k])
                         a = pi.sample(seed=action_rngs[k])
                         lp = pi.log_prob(a)
-                        ego_transitions.append((all_obs_encoded[k], a, lp, val))
+                        ego_transitions.append((ego_obs_encoded[k], a, lp, val))
                         actions_list.append(a)
 
                     # Compute partner actions (different partner per env, layout-specific pool)
                     for j in range(num_unseen):
                         p_params = jax.tree.map(lambda x: x[j], _partner_params)  # (n_env_l, ...)
-                        pi, _ = jax.vmap(network.apply)(p_params, all_obs_encoded[num_ego + j])
+                        pi, _ = jax.vmap(_p_net.apply)(p_params, partner_obs_encoded[num_ego + j])
                         a = pi.sample(seed=action_rngs[num_ego + j])
                         actions_list.append(a)
 
@@ -336,7 +338,20 @@ def main():
     else:
         network = ActorCritic(action_dim=action_dim, hidden_dims=config["hidden_dims"])
 
-    fcp_train_fn = make_fcp_train(config, network, encoder, reward_shaper)
+    # Dual encoder: when ego uses pixel, partners use egocentric MLP
+    # (SP Pop partners were trained with egocentric encoding)
+    partner_network = None
+    partner_encoder = None
+    if obs_enc != "egocentric":
+        partner_encoder = ObsEncoder(mode="egocentric")
+        # Detect partner hidden dims from checkpoint
+        with open(f"checkpoints/sp_pop_seed{seeds[0]}.pkl", "rb") as f:
+            _sp_data = pickle.load(f)
+        partner_dims = _sp_data["config"].get("hidden_dims", (256, 256))
+        partner_network = ActorCritic(action_dim=action_dim, hidden_dims=partner_dims)
+
+    fcp_train_fn = make_fcp_train(config, network, encoder, reward_shaper,
+                                   partner_network=partner_network, partner_encoder=partner_encoder)
     multi_fcp_fn = jax.jit(jax.vmap(fcp_train_fn))
 
     rngs = jnp.stack([jax.random.PRNGKey(s + 2000) for s in seeds])

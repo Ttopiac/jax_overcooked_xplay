@@ -81,40 +81,27 @@ class CNNActorCritic(nn.Module):
         return pi, jnp.squeeze(value, axis=-1)
 
 
-class ResBlock(nn.Module):
-    """Residual block: x -> ReLU -> Conv -> ReLU -> Conv + x."""
-    channels: int
-
-    @nn.compact
-    def __call__(self, x):
-        residual = x
-        x = nn.relu(x)
-        x = nn.Conv(self.channels, kernel_size=(3, 3), padding="SAME",
-                     kernel_init=orthogonal(jnp.sqrt(2)))(x)
-        x = nn.relu(x)
-        x = nn.Conv(self.channels, kernel_size=(3, 3), padding="SAME",
-                     kernel_init=orthogonal(jnp.sqrt(2)))(x)
-        return x + residual
-
-
 class IMPALACNNActorCritic(nn.Module):
-    """Actor-Critic with 4-block IMPALA ResNet encoder and palette decoding.
+    """IMPALA shallow CNN — 2 conv layers, same as IMPALA paper's shallow model.
 
-    Accepts palette-indexed uint8 observations (1, H, W) and decodes to RGB
-    via palette lookup before processing through the CNN. This keeps trajectory
-    storage at 1 byte/pixel while the CNN sees full float32 RGB.
+    Designed for pixel observations with palette-indexed storage.
+    Accepts (1, H, W) uint8 palette indices, decodes to RGB, then:
+      Conv(16, 8×8, stride=4) → ReLU → Conv(32, 4×4, stride=2) → ReLU
+      → Flatten → Dense(256) → ReLU → Actor/Critic heads
 
-    For 16×16 tiles (80×144 images):
-      Palette decode: (1, 80, 144) uint8 -> (3, 80, 144) float32
-      Block 1: Conv(16) -> MaxPool(stride=2) -> 2×ResBlock  -> 40×72×16
-      Block 2: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 20×36×32
-      Block 3: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 10×18×32
-      Block 4: Conv(32) -> MaxPool(stride=2) -> 2×ResBlock  -> 5×9×32
-      ReLU -> Flatten(1440) -> Dense(256) -> ReLU -> Actor/Critic heads
-      ~375K params
+    For 8×8 tiles (40×72 images):
+      Palette decode: (1, 40, 72) uint8 → (3, 40, 72) float32
+      Conv(16, 8×8, stride=4): (3, 40, 72) → (16, 10, 18)
+      Conv(32, 4×4, stride=2): (16, 10, 18) → (32, 5, 9)
+      Flatten: 32 × 5 × 9 = 1440 → Dense(256)
+      ~375K params, 2 conv layers
+
+    Architecture from: Espeholt et al., "IMPALA: Scalable Distributed Deep-RL
+    with Importance Weighted Actor-Learner Architectures", ICML 2018 (Figure 3,
+    shallow model). Handles free-position objects (no tile grid assumption),
+    suitable for future sim-to-real transfer with camera observations.
     """
     action_dim: int
-    block_channels: Sequence[int] = (16, 32, 32, 32)
     mlp_dim: int = 256
     palette: jnp.ndarray = None  # (num_colors, 3) float32, set at construction
 
@@ -129,14 +116,12 @@ class IMPALACNNActorCritic(nn.Module):
         x = jnp.moveaxis(x, -3, -1)
         batch_shape = x.shape[:-3]
 
-        # IMPALA blocks: Conv -> MaxPool -> ResBlock -> ResBlock
-        for ch in self.block_channels:
-            x = nn.Conv(ch, kernel_size=(3, 3), padding="SAME",
-                         kernel_init=orthogonal(jnp.sqrt(2)))(x)
-            x = nn.max_pool(x, window_shape=(3, 3), strides=(2, 2), padding="SAME")
-            x = ResBlock(ch)(x)
-            x = ResBlock(ch)(x)
-
+        # IMPALA shallow: 2 conv layers with large kernels/strides
+        x = nn.Conv(16, kernel_size=(8, 8), strides=(4, 4), padding="VALID",
+                     kernel_init=orthogonal(jnp.sqrt(2)))(x)
+        x = nn.relu(x)
+        x = nn.Conv(32, kernel_size=(4, 4), strides=(2, 2), padding="VALID",
+                     kernel_init=orthogonal(jnp.sqrt(2)))(x)
         x = nn.relu(x)
 
         # Flatten spatial dims
