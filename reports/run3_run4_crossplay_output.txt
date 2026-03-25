@@ -1,0 +1,175 @@
+Run 3 egos: SP(3), MEP-16(3), MEP-8(3), BCP(3), FCP(3)
+Run 4 egos: FCP pixel(6)
+  sp_pop seed 3: loaded H/M/L per layout
+    cramped_room: H=260 M=90 L=0
+    asymm_advantages: H=500 M=300 L=0
+    coord_ring: H=280 M=108 L=0
+    forced_coord: H=200 M=180 L=0
+    counter_circuit: H=180 M=82 L=0
+  sp_pop seed 4: loaded H/M/L per layout
+    cramped_room: H=260 M=120 L=0
+    asymm_advantages: H=500 M=320 L=0
+    coord_ring: H=280 M=120 L=0
+    forced_coord: H=200 M=80 L=0
+    counter_circuit: H=180 M=91 L=0
+  mep16_pop seed 3: loaded H/M/L per layout
+    cramped_room: H=260 M=220 L=220
+    asymm_advantages: H=500 M=260 L=50
+    coord_ring: H=220 M=160 L=31
+    forced_coord: H=200 M=180 L=6
+    counter_circuit: H=0 M=0 L=0
+  mep16_pop seed 4: loaded H/M/L per layout
+    cramped_room: H=260 M=70 L=70
+    asymm_advantages: H=480 M=260 L=260
+    coord_ring: H=220 M=180 L=180
+    forced_coord: H=200 M=180 L=0
+    counter_circuit: H=0 M=0 L=0
+  mep8_pop seed 3: loaded H/M/L per layout
+    cramped_room: H=260 M=220 L=220
+    asymm_advantages: H=500 M=280 L=280
+    coord_ring: H=220 M=200 L=200
+    forced_coord: H=200 M=200 L=200
+    counter_circuit: H=160 M=100 L=100
+  mep8_pop seed 4: loaded H/M/L per layout
+    cramped_room: H=260 M=240 L=240
+    asymm_advantages: H=500 M=260 L=260
+    coord_ring: H=240 M=200 L=200
+    forced_coord: H=200 M=200 L=200
+    counter_circuit: H=140 M=116 L=116
+
+============================================================
+TABLE A: SELF-PLAY
+============================================================
+  R3 SP s0: mean=272.0
+  R3 SP s1: mean=276.0
+  R3 SP s2: mean=268.0
+  R3 MEP-16 s0: mean=104.0
+  R3 MEP-16 s1: mean=196.0
+  R3 MEP-16 s2: mean=201.6
+  R3 MEP-8 s0: mean=220.9
+  R3 MEP-8 s1: mean=220.0
+  R3 MEP-8 s2: mean=151.9
+  R3 BCP s0: mean=62.6
+  R3 BCP s1: mean=65.3
+  R3 BCP s2: mean=106.7
+  R3 FCP s0: mean=135.2
+  R3 FCP s1: mean=136.0
+  R3 FCP s2: mean=14.8
+  R4 FCP pixel s0: mean=25.2
+  R4 FCP pixel s1: mean=0.0
+  R4 FCP pixel s2: mean=0.0
+  R4 FCP pixel s3: mean=9.7
+  R4 FCP pixel s4: mean=0.0
+  R4 FCP pixel s5: mean=20.0
+
+============================================================
+TABLES B: CROSS-PLAY vs POPULATIONS (H/M/L per layout)
+============================================================
+  R3 SP s0 vs populations...
+  R3 SP s1 vs populations...
+  R3 SP s2 vs populations...
+  R3 MEP-16 s0 vs populations...
+  R3 MEP-16 s1 vs populations...
+  R3 MEP-16 s2 vs populations...
+  R3 MEP-8 s0 vs populations...
+  R3 MEP-8 s1 vs populations...
+  R3 MEP-8 s2 vs populations...
+  R3 BCP s0 vs populations...
+  R3 BCP s1 vs populations...
+  R3 BCP s2 vs populations...
+  R3 FCP s0 vs populations...
+  R3 FCP s1 vs populations...
+  R3 FCP s2 vs populations...
+  R4 FCP pixel s0 vs populations...
+  R4 FCP pixel s1 vs populations...
+  R4 FCP pixel s2 vs populations...
+  R4 FCP pixel s3 vs populations...
+  R4 FCP pixel s4 vs populations...
+  R4 FCP pixel s5 vs populations...
+
+  BC cross-play...
+
+============================================================
+TABLE C: RUN 4 PIXEL FCP vs RUN 3 EGO AGENTS
+============================================================
+  R4 pixel s0 vs all R3 egos done
+  R4 pixel s1 vs all R3 egos done
+  R4 pixel s2 vs all R3 egos done
+  R4 pixel s3 vs all R3 egos done
+  R4 pixel s4 vs all R3 egos done
+  R4 pixel s5 vs all R3 egos done
+
+============================================================
+EVALUATION COMPLETE (132 min)
+============================================================
+
+--- TABLE A: Self-Play ---
+                 R3_SP:    260.0    500.0    240.0    200.0    160.0  mean=272.0
+             R3_MEP-16:    253.3    206.7    140.0    200.0     36.0  mean=167.2
+              R3_MEP-8:    253.3    421.5    140.0    173.1      0.0  mean=197.6
+                R3_BCP:      7.8    153.3     73.3  mean=78.2
+                R3_FCP:    162.3    160.1     73.3     55.4     25.3  mean=95.3
+          R4_FCP_pixel:      0.0     12.4      0.0      0.0     33.3  mean=9.2
+
+--- TABLE B: cramped_room ---
+                     SP H SP M SP L M16 H M16 M M16 L M8 H M8 M M8 L    BC
+                 R3_SP   195   181     1   108   136   136   172   125   125     3
+             R3_MEP-16   163    99     2   244   241   241   160   236   236     5
+              R3_MEP-8   221   171     2   173   212   212   224   243   243     2
+                R3_BCP    69    26    57   111   110   110    59   174   174   147
+                R3_FCP   206   186    24   172   193   193   182   178   178   104
+          R4_FCP_pixel   192   173     0   134   130   130   206   162   162     0
+
+--- TABLE B: asymm_advantages ---
+                     SP H SP M SP L M16 H M16 M M16 L M8 H M8 M M8 L    BC
+                 R3_SP   262   247     0   480   100    97   500   143   143     0
+             R3_MEP-16   374   305     0   410   263   269   420   267   267     0
+              R3_MEP-8   400   299     0   463   270   270   460   277   277     0
+                R3_BCP    30    27   133    60    47    67    26    53    53   158
+                R3_FCP   397   197    29   463   190   187   499   197   197    36
+          R4_FCP_pixel   473   174     0   450    85    76   497   107   107     2
+
+--- TABLE B: coord_ring ---
+                     SP H SP M SP L M16 H M16 M M16 L M8 H M8 M M8 L    BC
+                 R3_SP    37    10     0    67    63    47    10    17    17     0
+             R3_MEP-16    61    49     0   122    95    79   152   112   112     0
+              R3_MEP-8   116    16     0   159   163    91   125   152   152     0
+                R3_BCP    43    24     6     3    93    61    13     3     3    11
+                R3_FCP   123    37     0    37    10    34   126    46    46     0
+          R4_FCP_pixel    55    21     0    66    19    17    83    35    35     0
+
+--- TABLE B: forced_coord ---
+                     SP H SP M SP L M16 H M16 M M16 L M8 H M8 M M8 L    BC
+                 R3_SP    95    67     0    57     0     7     0     0     0     —
+             R3_MEP-16   179   113     0   153   149   123    97    97    97     —
+              R3_MEP-8   158   111     0   127    90    90    78    78    78     —
+                R3_FCP    50    66     0    23    32    35    30    30    30     —
+          R4_FCP_pixel   122    98     0    66    70    78    32    32    32     —
+
+--- TABLE B: counter_circuit ---
+                     SP H SP M SP L M16 H M16 M M16 L M8 H M8 M M8 L    BC
+                 R3_SP    30     3     0     0     0     0     9     9     9     —
+             R3_MEP-16    47    43    10     3     3     3     4    12    12     —
+              R3_MEP-8    27    23     0     0     0     0    47    20    20     —
+                R3_FCP   100    13     8     0     0     0     8    44    44     —
+          R4_FCP_pixel    27    23    17     0     0     0    12    33    33     —
+
+--- TABLE C: R4 Pixel FCP vs R3 Egos ---
+                     SP   MEP-16    MEP-8      BCP      FCP
+    cramped_room    165.6    212.1    219.3     96.3    187.9
+  asymm_advantages    496.7     68.3    394.2     83.2      8.5
+      coord_ring      4.2     28.0      3.3     13.5     36.1
+    forced_coord     86.1    117.6    127.7        —     48.2
+  counter_circuit      7.4     22.3      1.1        —      6.7
+            Mean    152.0     89.7    149.1     64.3     57.5
+
+--- TABLE D: Overall Summary ---
+                     Self  SP_H  SP_M  SP_L M16_H M16_M M16_L  M8_H  M8_M  M8_L    BC  Egos   XP
+                 R3_SP 272.0   124   102     0   142    60    57   138    59    59     1     —    77
+             R3_MEP-16 167.2   164   122     2   187   150   143   167   145   145     2     —   128
+              R3_MEP-8 197.6   184   124     0   184   147   133   187   154   154     1     —   132
+                R3_BCP  78.2    47    26    65    58    83    79    33    77    77   105     —    65
+                R3_FCP  95.3   175   100    12   139    85    90   169    99    99    47     —   104
+          R4_FCP_pixel   9.2   174    98     3   143    61    60   166    74    74     1   106    94
+
+Raw results saved to reports/eval_results/run3_run4_crossplay_raw.json

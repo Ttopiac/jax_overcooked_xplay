@@ -36,11 +36,11 @@ BC_TO_JAXMARL = {
 }
 
 
-def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key, num_envs=32):
+def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key, num_envs=32, encoder_b=None):
     """Run one batch of episodes and return mean sparse reward.
 
     Both agents use deterministic actions (argmax).
-    Supports different network architectures for each agent (e.g. ego 3×64 vs BC 2×64).
+    Supports different network architectures and encoders for each agent.
 
     Args:
         env: Overcooked env (2 agents)
@@ -48,13 +48,15 @@ def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key
         params_a: agent_0 params
         network_b: ActorCritic network for agent_1
         params_b: agent_1 params
-        encoder: ObsEncoder
+        encoder: ObsEncoder for agent_0 (and agent_1 if encoder_b is None)
         key: random key
         num_envs: parallel episodes
+        encoder_b: optional separate ObsEncoder for agent_1
 
     Returns:
         mean_sparse_reward: jax array scalar
     """
+    _encoder_b = encoder_b if encoder_b is not None else encoder
     keys = jax.random.split(key, num_envs)
     obs, state = jax.vmap(env.reset)(keys)
 
@@ -65,7 +67,7 @@ def evaluate_episode(env, network_a, params_a, network_b, params_b, encoder, key
         key, step_key = jax.random.split(key)
 
         obs_0 = encoder.encode(obs, state, 0, num_envs)
-        obs_1 = encoder.encode(obs, state, 1, num_envs)
+        obs_1 = _encoder_b.encode(obs, state, 1, num_envs)
 
         pi_0, _ = network_a.apply(params_a, obs_0)
         pi_1, _ = network_b.apply(params_b, obs_1)
@@ -197,8 +199,8 @@ def evaluate_self_play(network, params, encoder, layouts, num_episodes=100, num_
 
 
 def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner,
-                        encoder, layouts, num_episodes=100, num_envs=32):
-    """Evaluate ego agent paired with a different partner. Supports different architectures."""
+                        encoder, layouts, num_episodes=100, num_envs=32, encoder_partner=None):
+    """Evaluate ego agent paired with a different partner. Supports different architectures and encoders."""
     results = {}
     num_batches = max(1, num_episodes // num_envs)
 
@@ -207,7 +209,7 @@ def evaluate_cross_play(network_ego, params_ego, network_partner, params_partner
 
         @jax.jit
         def eval_fn(key, _env=env):
-            return evaluate_episode(_env, network_ego, params_ego, network_partner, params_partner, encoder, key, num_envs)
+            return evaluate_episode(_env, network_ego, params_ego, network_partner, params_partner, encoder, key, num_envs, encoder_b=encoder_partner)
 
         batch_rewards = []
         for b in range(num_batches):
@@ -495,7 +497,8 @@ def main():
         for i, p_params in enumerate(partners):
             p_params = jax.device_put(p_params)
             results = evaluate_cross_play(ego_network, ego_params, partner_network, p_params,
-                                           encoder, eval_layouts, args.num_episodes, args.num_envs)
+                                           encoder, eval_layouts, args.num_episodes, args.num_envs,
+                                           encoder_partner=partner_encoder)
             mean_r = np.mean(list(results.values()))
             all_results.append((results, mean_r))
             if i < 5 or i == len(partners) - 1:
