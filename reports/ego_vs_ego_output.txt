@@ -1,0 +1,104 @@
+          SP vs MEP-16    : mean=108.3
+          SP vs MEP-8     : mean=156.6
+          SP vs BCP       : mean=43.1
+          SP vs FCP       : mean=69.1
+          SP vs R4_pixel  : mean=0.8
+      MEP-16 vs SP        : mean=142.1
+      MEP-16 vs MEP-8     : mean=202.2
+      MEP-16 vs BCP       : mean=99.8
+      MEP-16 vs FCP       : mean=128.8
+      MEP-16 vs R4_pixel  : mean=3.8
+       MEP-8 vs SP        : mean=168.0
+       MEP-8 vs MEP-16    : mean=169.5
+       MEP-8 vs BCP       : mean=106.9
+       MEP-8 vs FCP       : mean=78.7
+       MEP-8 vs R4_pixel  : mean=1.0
+         BCP vs SP        : mean=49.1
+         BCP vs MEP-16    : mean=75.5
+         BCP vs MEP-8     : mean=80.7
+         BCP vs FCP       : mean=36.9
+         BCP vs R4_pixel  : mean=65.0
+         FCP vs SP        : mean=170.9
+         FCP vs MEP-16    : mean=115.4
+         FCP vs MEP-8     : mean=156.2
+         FCP vs BCP       : mean=82.6
+         FCP vs R4_pixel  : mean=24.8
+    R4_pixel vs SP        : mean=152.0
+    R4_pixel vs MEP-16    : mean=89.7
+    R4_pixel vs MEP-8     : mean=149.1
+    R4_pixel vs BCP       : mean=64.3
+    R4_pixel vs FCP       : mean=57.5
+
+Completed 1584 evals in 58 min
+
+============================================================
+TABLE C (EXPANDED): EGO vs EGO CROSS-PLAY
+============================================================
+ Ego/Partner         SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)      108.3      156.6       43.1       69.1        0.8
+      MEP-16      142.1     (self)      202.2       99.8      128.8        3.8
+       MEP-8      168.0      169.5     (self)      106.9       78.7        1.0
+         BCP       49.1       75.5       80.7     (self)       36.9       65.0
+         FCP      170.9      115.4      156.2       82.6     (self)       24.8
+    R4_pixel      152.0       89.7      149.1       64.3       57.5     (self)
+
+============================================================
+VS EGOS SUMMARY (for Table D)
+============================================================
+            SP vs Egos = 78.4
+        MEP-16 vs Egos = 116.7
+         MEP-8 vs Egos = 104.6
+           BCP vs Egos = 61.4
+           FCP vs Egos = 112.3
+      R4_pixel vs Egos = 105.8
+
+============================================================
+PER-LAYOUT EGO vs EGO
+============================================================
+
+  cramped_room:
+                     SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)      168.0      147.1       50.0      185.0        3.9
+      MEP-16      129.6     (self)      254.5       87.6      186.6        3.3
+       MEP-8      169.3      251.3     (self)      113.5      200.7        4.9
+         BCP       52.0      126.7      126.2     (self)       68.0       31.5
+         FCP      165.5      216.8      185.5       76.6     (self)       48.0
+    R4_pixel      165.6      212.1      219.3       96.3      187.9     (self)
+
+  asymm_advantages:
+                     SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)      131.1      420.0       31.1        9.2        0.0
+      MEP-16      421.0     (self)      391.1      160.4      152.5        0.0
+       MEP-8      488.9      286.7     (self)      131.1       29.1        0.0
+         BCP       48.9       26.7       24.4     (self)       31.0      160.0
+         FCP      500.0      182.2      383.0      157.8     (self)       68.1
+    R4_pixel      496.7       68.3      394.2       83.2        8.5     (self)
+
+  coord_ring:
+                     SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)       40.0       33.6       48.2       32.7        0.0
+      MEP-16       45.7     (self)      147.8       51.4      101.8        0.0
+       MEP-8       45.9      134.8     (self)       76.1       82.0        0.0
+         BCP       46.4       73.1       91.4     (self)       11.6        3.6
+         FCP       47.2       44.8       90.0       13.4     (self)        0.0
+    R4_pixel        4.2       28.0        3.3       13.5       36.1     (self)
+
+  forced_coord:
+                     SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)      180.0      166.5          —      102.5        0.0
+      MEP-16      112.9     (self)      188.7          —      169.7        0.0
+       MEP-8      122.0      130.6     (self)          —       64.9        0.0
+         BCP          —          —          —     (self)          —          —
+         FCP      120.7      100.7      108.9          —     (self)        0.0
+    R4_pixel       86.1      117.6      127.7          —       48.2     (self)
+
+  counter_circuit:
+                     SP     MEP-16      MEP-8        BCP        FCP   R4_pixel
+          SP     (self)       22.2       15.6          —       16.2        0.0
+      MEP-16        1.4     (self)       28.9          —       33.4       15.6
+       MEP-8       14.2       44.1     (self)          —       17.0        0.0
+         BCP          —          —          —     (self)          —          —
+         FCP       20.8       32.6       13.3          —     (self)        7.8
+    R4_pixel        7.4       22.3        1.1          —        6.7     (self)
+
+Raw results saved to reports/eval_results/ego_vs_ego_raw.json

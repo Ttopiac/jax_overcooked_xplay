@@ -142,25 +142,79 @@ For BC: no H/M/L tiers. Ego plays with all 9 BC agents from each seed, averages 
 
 ---
 
-## Table C: Cross-Play Run 4 Pixel FCP Ego vs Run 3 MLP Ego Agents
+## Table C: Full Ego vs Ego Cross-Play Matrix (Run 3 MLP & Run 4 Pixel)
 
-Pixel FCP ego (Run 4) plays against each Run 3 MLP ego agent. Dual encoder: pixel for Run 4 ego, egocentric for Run 3 partner.
+Each ego method plays against every other ego method. Each cell = mean sparse reward across all ego seeds × partner seeds × layouts (5 layouts for most, 3 for BCP).
 
-How each cell is computed:
-1. Pixel ego seed `s` plays with Run 3 ego seed `p` → per-layout scores
-2. Average across Run 3 partner seeds 0, 1, 2 → score per pixel seed per layout
-3. Average across all 6 pixel seeds → **final cell value**
+Dual encoder used when pixel ego plays with MLP partner (or vice versa).
 
-| Layout | vs SP ego | vs FCP ego | vs MEP-16 ego | vs MEP-8 ego | vs BCP ego |
-|--------|-----------|------------|--------------|-------------|------------|
-| cramped | 165.6 | 187.9 | 212.1 | 219.3 | 96.3 |
-| asymm | 496.7 | 8.5 | 68.3 | 394.2 | 83.2 |
-| coord | 4.2 | 36.1 | 28.0 | 3.3 | 13.5 |
-| forced | 86.1 | 48.2 | 117.6 | 127.7 | — |
-| counter | 7.4 | 6.7 | 22.3 | 1.1 | — |
-| **Mean** | **152.0** | **57.5** | **89.7** | **149.1** | **64.3** |
+### Per-layout breakdown
 
-BCP ego only trained on cramped, asymm, coord — forced and counter marked (—).
+**cramped_room:**
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel |
+|---------------|-----|--------|-------|-----|-----|----------|
+| R3 SP | (self) | 168 | 147 | 50 | 185 | 4 |
+| R3 MEP-16 | 130 | (self) | 255 | 88 | 187 | 3 |
+| R3 MEP-8 | 169 | 251 | (self) | 114 | 201 | 5 |
+| R3 BCP | 52 | 127 | 126 | (self) | 68 | 32 |
+| R3 FCP | 166 | 217 | 186 | 77 | (self) | 48 |
+| R4 FCP pixel | 166 | 212 | 219 | 96 | 188 | (self) |
+
+**asymm_advantages:**
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel |
+|---------------|-----|--------|-------|-----|-----|----------|
+| R3 SP | (self) | 131 | 420 | 31 | 9 | 0 |
+| R3 MEP-16 | 421 | (self) | 391 | 160 | 153 | 0 |
+| R3 MEP-8 | 489 | 287 | (self) | 131 | 29 | 0 |
+| R3 BCP | 49 | 27 | 24 | (self) | 31 | 160 |
+| R3 FCP | 500 | 182 | 383 | 158 | (self) | 68 |
+| R4 FCP pixel | 497 | 68 | 394 | 83 | 9 | (self) |
+
+**coord_ring:**
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel |
+|---------------|-----|--------|-------|-----|-----|----------|
+| R3 SP | (self) | 40 | 34 | 48 | 33 | 0 |
+| R3 MEP-16 | 46 | (self) | 148 | 51 | 102 | 0 |
+| R3 MEP-8 | 46 | 135 | (self) | 76 | 82 | 0 |
+| R3 BCP | 46 | 73 | 91 | (self) | 12 | 4 |
+| R3 FCP | 47 | 45 | 90 | 13 | (self) | 0 |
+| R4 FCP pixel | 4 | 28 | 3 | 14 | 36 | (self) |
+
+**forced_coord:**
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel |
+|---------------|-----|--------|-------|-----|-----|----------|
+| R3 SP | (self) | 180 | 167 | — | 103 | 0 |
+| R3 MEP-16 | 113 | (self) | 189 | — | 170 | 0 |
+| R3 MEP-8 | 122 | 131 | (self) | — | 65 | 0 |
+| R3 BCP | — | — | — | (self) | — | — |
+| R3 FCP | 121 | 101 | 109 | — | (self) | 0 |
+| R4 FCP pixel | 86 | 118 | 128 | — | 48 | (self) |
+
+**counter_circuit:**
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel |
+|---------------|-----|--------|-------|-----|-----|----------|
+| R3 SP | (self) | 22 | 16 | — | 16 | 0 |
+| R3 MEP-16 | 1 | (self) | 29 | — | 33 | 16 |
+| R3 MEP-8 | 14 | 44 | (self) | — | 17 | 0 |
+| R3 BCP | — | — | — | (self) | — | — |
+| R3 FCP | 21 | 33 | 13 | — | (self) | 8 |
+| R4 FCP pixel | 7 | 22 | 1 | — | 7 | (self) |
+
+### Summary (mean across layouts)
+
+| Ego \ Partner | SP | MEP-16 | MEP-8 | BCP | FCP | R4 pixel | **vs Egos** |
+|---------------|-----|--------|-------|-----|-----|----------|------------|
+| R3 SP | (self) | 108 | 157 | 43 | 69 | 1 | **78.4** |
+| R3 MEP-16 | 142 | (self) | 202 | 100 | 129 | 4 | **116.7** |
+| R3 MEP-8 | 168 | 169 | (self) | 107 | 79 | 1 | **104.6** |
+| R3 BCP | 49 | 76 | 81 | (self) | 37 | 65 | **61.4** |
+| R3 FCP | 171 | 115 | 156 | 83 | (self) | 25 | **112.3** |
+| R4 FCP pixel | 152 | 90 | 149 | 64 | 58 | (self) | **105.8** |
 
 ---
 
@@ -170,15 +224,15 @@ Mean across all 5 layouts (3 layouts for BCP-related cells).
 
 | Method | Self-play | vs SP H | vs SP M | vs SP L | vs M16 H | vs M16 M | vs M16 L | vs M8 H | vs M8 M | vs M8 L | vs BC | vs Egos | XP Overall |
 |--------|-----------|---------|---------|---------|----------|----------|----------|---------|---------|---------|-------|---------|------------|
-| Run 3 SP | 272.0 | 124 | 102 | 0 | 142 | 60 | 57 | 138 | 59 | 59 | 1 | — | 77 |
-| Run 3 MEP-16 | 167.2 | 164 | 122 | 2 | 187 | 150 | 143 | 167 | 145 | 145 | 2 | — | 128 |
-| Run 3 MEP-8 | 197.6 | 184 | 124 | 0 | 184 | 147 | 133 | 187 | 154 | 154 | 1 | — | 132 |
-| Run 3 BCP | 78.2 | 47 | 26 | 65 | 58 | 83 | 79 | 33 | 77 | 77 | 105 | — | 65 |
-| Run 3 FCP | 95.3 | 175 | 100 | 12 | 139 | 85 | 90 | 169 | 99 | 99 | 47 | — | 104 |
-| **Run 4 FCP pixel** | **9.2** | **174** | **98** | **3** | **143** | **61** | **60** | **166** | **74** | **74** | **1** | **106** | **94** |
+| Run 3 SP | 272.0 | 124 | 102 | 0 | 142 | 60 | 57 | 138 | 59 | 59 | 1 | 78 | 78 |
+| Run 3 MEP-16 | 167.2 | 164 | 122 | 2 | 187 | 150 | 143 | 167 | 145 | 145 | 2 | 117 | 122 |
+| Run 3 MEP-8 | 197.6 | 184 | 124 | 0 | 184 | 147 | 133 | 187 | 154 | 154 | 1 | 105 | 125 |
+| Run 3 BCP | 78.2 | 47 | 26 | 65 | 58 | 83 | 79 | 33 | 77 | 77 | 105 | 61 | 65 |
+| Run 3 FCP | 95.3 | 175 | 100 | 12 | 139 | 85 | 90 | 169 | 99 | 99 | 47 | 112 | 103 |
+| **Run 4 FCP pixel** | **9.2** | **174** | **98** | **3** | **143** | **61** | **60** | **166** | **74** | **74** | **1** | **106** | **96** |
 
-- "vs Egos" = pixel FCP ego vs Run 3 ego agents (Table C mean across all methods). Only applicable to Run 4.
-- "XP Overall" = mean of all cross-play columns (vs pop H/M/L + vs BC + vs Egos where applicable).
+- "vs Egos" = mean cross-play score when playing against all other ego methods (Table C summary).
+- "XP Overall" = mean of all cross-play columns (vs pop H/M/L + vs BC + vs Egos).
 
 ---
 

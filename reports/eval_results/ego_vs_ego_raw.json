@@ -1,0 +1,204 @@
+{
+  "SP": {
+    "MEP-16": {
+      "cramped_room": 168.0324074074074,
+      "asymm_advantages": 131.11111111111111,
+      "coord_ring": 40.0,
+      "forced_coord": 180.0,
+      "counter_circuit": 22.15277777777778
+    },
+    "MEP-8": {
+      "cramped_room": 147.12962962962962,
+      "asymm_advantages": 420.0,
+      "coord_ring": 33.58796296296296,
+      "forced_coord": 166.52777777777777,
+      "counter_circuit": 15.555555555555555
+    },
+    "BCP": {
+      "cramped_room": 50.0,
+      "asymm_advantages": 31.11111111111111,
+      "coord_ring": 48.17129629629629
+    },
+    "FCP": {
+      "cramped_room": 185.00000000000003,
+      "asymm_advantages": 9.212962962962964,
+      "coord_ring": 32.708333333333336,
+      "forced_coord": 102.52314814814815,
+      "counter_circuit": 16.25
+    },
+    "R4_pixel": {
+      "cramped_room": 3.9351851851851856,
+      "asymm_advantages": 0.0,
+      "coord_ring": 0.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    }
+  },
+  "MEP-16": {
+    "SP": {
+      "cramped_room": 129.58333333333334,
+      "asymm_advantages": 420.97222222222223,
+      "coord_ring": 45.694444444444436,
+      "forced_coord": 112.89351851851853,
+      "counter_circuit": 1.3888888888888888
+    },
+    "MEP-8": {
+      "cramped_room": 254.51388888888889,
+      "asymm_advantages": 391.1111111111111,
+      "coord_ring": 147.84722222222223,
+      "forced_coord": 188.68055555555554,
+      "counter_circuit": 28.88888888888889
+    },
+    "BCP": {
+      "cramped_room": 87.5925925925926,
+      "asymm_advantages": 160.41666666666666,
+      "coord_ring": 51.41203703703704
+    },
+    "FCP": {
+      "cramped_room": 186.59722222222223,
+      "asymm_advantages": 152.45370370370372,
+      "coord_ring": 101.82870370370371,
+      "forced_coord": 169.74537037037038,
+      "counter_circuit": 33.42592592592593
+    },
+    "R4_pixel": {
+      "cramped_room": 3.3217592592592595,
+      "asymm_advantages": 0.0,
+      "coord_ring": 0.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 15.555555555555555
+    }
+  },
+  "MEP-8": {
+    "SP": {
+      "cramped_room": 169.25925925925927,
+      "asymm_advantages": 488.8888888888889,
+      "coord_ring": 45.949074074074076,
+      "forced_coord": 121.96759259259261,
+      "counter_circuit": 14.166666666666666
+    },
+    "MEP-16": {
+      "cramped_room": 251.31944444444446,
+      "asymm_advantages": 286.6666666666667,
+      "coord_ring": 134.7685185185185,
+      "forced_coord": 130.55555555555554,
+      "counter_circuit": 44.09722222222222
+    },
+    "BCP": {
+      "cramped_room": 113.49537037037038,
+      "asymm_advantages": 131.11111111111111,
+      "coord_ring": 76.11111111111111
+    },
+    "FCP": {
+      "cramped_room": 200.69444444444446,
+      "asymm_advantages": 29.050925925925924,
+      "coord_ring": 81.9675925925926,
+      "forced_coord": 64.93055555555556,
+      "counter_circuit": 16.96759259259259
+    },
+    "R4_pixel": {
+      "cramped_room": 4.94212962962963,
+      "asymm_advantages": 0.0,
+      "coord_ring": 0.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 0.0
+    }
+  },
+  "BCP": {
+    "SP": {
+      "cramped_room": 51.96759259259259,
+      "asymm_advantages": 48.888888888888886,
+      "coord_ring": 46.41203703703704
+    },
+    "MEP-16": {
+      "cramped_room": 126.66666666666664,
+      "asymm_advantages": 26.666666666666668,
+      "coord_ring": 73.07870370370371
+    },
+    "MEP-8": {
+      "cramped_room": 126.15740740740742,
+      "asymm_advantages": 24.444444444444443,
+      "coord_ring": 91.36574074074073
+    },
+    "FCP": {
+      "cramped_room": 67.9861111111111,
+      "asymm_advantages": 31.041666666666668,
+      "coord_ring": 11.62037037037037
+    },
+    "R4_pixel": {
+      "cramped_room": 31.539351851851855,
+      "asymm_advantages": 160.0,
+      "coord_ring": 3.553240740740741
+    }
+  },
+  "FCP": {
+    "SP": {
+      "cramped_room": 165.48611111111111,
+      "asymm_advantages": 500.0,
+      "coord_ring": 47.22222222222222,
+      "forced_coord": 120.74074074074072,
+      "counter_circuit": 20.833333333333332
+    },
+    "MEP-16": {
+      "cramped_room": 216.80555555555554,
+      "asymm_advantages": 182.22222222222223,
+      "coord_ring": 44.76851851851851,
+      "forced_coord": 100.67129629629629,
+      "counter_circuit": 32.56944444444444
+    },
+    "MEP-8": {
+      "cramped_room": 185.50925925925927,
+      "asymm_advantages": 382.9861111111111,
+      "coord_ring": 90.04629629629629,
+      "forced_coord": 108.88888888888889,
+      "counter_circuit": 13.333333333333334
+    },
+    "BCP": {
+      "cramped_room": 76.55092592592592,
+      "asymm_advantages": 157.75462962962962,
+      "coord_ring": 13.37962962962963
+    },
+    "R4_pixel": {
+      "cramped_room": 47.951388888888886,
+      "asymm_advantages": 68.13657407407408,
+      "coord_ring": 0.0,
+      "forced_coord": 0.0,
+      "counter_circuit": 7.777777777777778
+    }
+  },
+  "R4_pixel": {
+    "SP": {
+      "cramped_room": 165.5787037037037,
+      "asymm_advantages": 496.6666666666667,
+      "coord_ring": 4.189814814814814,
+      "forced_coord": 86.14583333333333,
+      "counter_circuit": 7.361111111111111
+    },
+    "MEP-16": {
+      "cramped_room": 212.09490740740742,
+      "asymm_advantages": 68.33333333333333,
+      "coord_ring": 28.043981481481485,
+      "forced_coord": 117.58101851851853,
+      "counter_circuit": 22.32638888888889
+    },
+    "MEP-8": {
+      "cramped_room": 219.31712962962965,
+      "asymm_advantages": 394.2013888888889,
+      "coord_ring": 3.3333333333333335,
+      "forced_coord": 127.69675925925925,
+      "counter_circuit": 1.1111111111111112
+    },
+    "BCP": {
+      "cramped_room": 96.28472222222223,
+      "asymm_advantages": 83.1712962962963,
+      "coord_ring": 13.460648148148149
+    },
+    "FCP": {
+      "cramped_room": 187.9398148148148,
+      "asymm_advantages": 8.530092592592592,
+      "coord_ring": 36.13425925925927,
+      "forced_coord": 48.19444444444444,
+      "counter_circuit": 6.6782407407407405
+    }
+  }
+}
