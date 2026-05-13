@@ -41,7 +41,7 @@ This repo has many long-running experiments. Work can be wiped by one bad comman
 - **Never `git reset --hard`, `git clean -fd`, or force-push** without explicit user instruction.
 - **Training runs are long** (hours to days). Before starting a new run, confirm: (a) the previous run is backed up, (b) the script won't overwrite active checkpoints, (c) the user has agreed to start.
 - **Evaluation is cheap** (minutes); training is expensive. Prefer re-running eval over re-running training.
-- **Stale reports**: `reports/04_run4_cnn_pixel_human_equivalent/report.md` still describes an earlier 10M full-grid CNN attempt, not the current 100M pixel run. Don't cite its numbers — see `reports/05_run3_vs_run4_crossplay_eval/crossplay_eval.md` for current results.
+- **Canonical results**: `reports/05_run3_vs_run4_crossplay_eval/crossplay_eval.md` has the full cross-play comparison. `reports/04_run4_cnn_pixel_human_equivalent/report.md` has the Run 4 architecture journey and settings.
 
 ## Git
 

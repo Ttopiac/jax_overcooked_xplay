@@ -27,7 +27,7 @@ log "=== Step 1: SP Population (pixel obs + IMPALA CNN) ==="
 # Palette-indexed pixel obs: 1 byte/pixel instead of 12 (float32 RGB).
 # 16x16 tiles with palette indexing fits batch_size=8 with 42 envs/layout.
 python train_sp_population.py --seeds 0,1,2,3,4 --pop-size 16 --num-checkpoints 35 \
-    --total-timesteps 100000000 --obs-encoding pixel --batch-size 8 --wandb
+    --total-timesteps 100000000 --obs-encoding pixel --batch-size 2 --wandb
 log "Step 1 done."
 
 # --- Step 2: Evaluate SP pop per layout (for FCP) ---
